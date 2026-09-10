@@ -2,9 +2,12 @@ package com.sih.voiceguard
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.speech.RecognizerIntent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -27,14 +30,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.sih.voiceguard.ai.OnDeviceSpeechAnalyzer
 import com.sih.voiceguard.security.SecureStorage
 import com.sih.voiceguard.service.CallShieldManager
+import com.sih.voiceguard.service.WhatsAppCallListenerService
+import com.sih.voiceguard.ui.FloatingShieldOverlay
+
+fun isNotificationAccessGranted(context: Context): Boolean {
+    val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners") ?: ""
+    return flat.contains(context.packageName) || NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+}
+
+fun isOverlayGranted(context: Context): Boolean {
+    return Settings.canDrawOverlays(context)
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -136,9 +154,26 @@ fun OnDeviceCallScreen(
     onRequestMicPermission: () -> Unit
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val shieldState by CallShieldManager.uiState.collectAsState()
     var showStepUpDialog by remember { mutableStateOf(false) }
     var customTestInput by remember { mutableStateOf("") }
+    var hasNotificationAccess by remember { mutableStateOf(isNotificationAccessGranted(context)) }
+    var hasOverlayPermission by remember { mutableStateOf(isOverlayGranted(context)) }
+    var isSimulatedOverlayActive by remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasNotificationAccess = isNotificationAccessGranted(context)
+                hasOverlayPermission = isOverlayGranted(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val activeCaller = callerNumber ?: shieldState.callerNumber
 
@@ -363,6 +398,160 @@ fun OnDeviceCallScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
+        // 2.5 WhatsApp Real-Time Call Interceptor & Floating Shield Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                1.5.dp,
+                if (hasNotificationAccess && hasOverlayPermission) Color(0xFF10B981) else Color(0xFFF59E0B)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(9.dp)
+                                .clip(CircleShape)
+                                .background(if (hasNotificationAccess && hasOverlayPermission) Color(0xFF10B981) else Color(0xFFF59E0B))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "WhatsApp VoIP Shield",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (hasNotificationAccess && hasOverlayPermission) Color(0xFFDCFCE7) else Color(0xFFFEF3C7)
+                    ) {
+                        Text(
+                            text = if (hasNotificationAccess && hasOverlayPermission) "ARMED & ACTIVE" else "SETUP REQUIRED",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (hasNotificationAccess && hasOverlayPermission) Color(0xFF166534) else Color(0xFF92400E),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = if (hasNotificationAccess && hasOverlayPermission)
+                        "WhatsApp call interception active. Incoming VoIP calls automatically trigger real-time AI screening with a floating security badge."
+                    else
+                        "Enable permissions below so VoiceGuard can automatically intercept incoming WhatsApp calls and show the floating safety pill.",
+                    fontSize = 11.sp,
+                    color = Color(0xFF64748B),
+                    lineHeight = 16.sp
+                )
+
+                // Permission action buttons if not granted
+                if (!hasNotificationAccess) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            try {
+                                val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // fallback
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().height(42.dp)
+                    ) {
+                        Icon(Icons.Default.NotificationsActive, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("1. Enable WhatsApp Notification Access", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (!hasOverlayPermission) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            try {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:${context.packageName}")
+                                )
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // fallback
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().height(42.dp)
+                    ) {
+                        Icon(Icons.Default.Layers, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("2. Enable Floating Shield Overlay", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                // WhatsApp Call Simulator Test Action
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            CallShieldManager.startInCallShield(context, "WhatsApp: +91 98200 45678")
+                            try {
+                                FloatingShieldOverlay.show(context, "+91 98200 45678")
+                                isSimulatedOverlayActive = true
+                            } catch (e: Exception) {
+                                // ignore
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f).height(42.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Simulate WhatsApp Call", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    if (isSimulatedOverlayActive || WhatsAppCallListenerService.isWhatsAppCallActive) {
+                        Button(
+                            onClick = {
+                                FloatingShieldOverlay.dismiss(context)
+                                isSimulatedOverlayActive = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF64748B)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.height(42.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
+                        ) {
+                            Text("Hide Overlay", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
         // 3. Central Minimal Security Status Card
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -453,7 +642,32 @@ fun OnDeviceCallScreen(
                     )
                 }
 
+                // AI Deep Analysis Explanation
                 if (shieldState.currentRiskScore >= 70 || shieldState.scamThreatCategory != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFFEE2E2),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFCA5A5)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "AI Risk Analysis:",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF991B1B)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = shieldState.aiExplanation,
+                                fontSize = 11.sp,
+                                color = Color(0xFF7F1D1D),
+                                lineHeight = 15.sp
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(14.dp))
                     Button(
                         onClick = { showStepUpDialog = true },
@@ -518,7 +732,7 @@ fun OnDeviceCallScreen(
                         color = if (shieldState.scamThreatCategory != null) Color(0xFFFEE2E2) else if (shieldState.liveTranscript.isNotEmpty()) Color(0xFFDCFCE7) else Color(0xFFF1F5F9)
                     ) {
                         Text(
-                            text = if (shieldState.scamThreatCategory != null) "FLAGGED: ${shieldState.scamThreatCategory}" else if (shieldState.liveTranscript.isNotEmpty()) "SAFE" else "READY",
+                            text = if (shieldState.scamThreatCategory != null) "FLAGGED: ${shieldState.threatLevel}" else if (shieldState.liveTranscript.isNotEmpty()) "SAFE" else "READY",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = if (shieldState.scamThreatCategory != null) Color(0xFFDC2626) else if (shieldState.liveTranscript.isNotEmpty()) Color(0xFF059669) else Color(0xFF64748B),
@@ -572,10 +786,17 @@ fun OnDeviceCallScreen(
                         if (shieldState.scamThreatCategory != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Threat Detected: ${shieldState.scamThreatCategory} • Elevated to 95% AI Risk",
+                                text = "Threat: ${shieldState.scamThreatCategory} (${shieldState.threatLevel})",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFDC2626)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = shieldState.aiExplanation,
+                                fontSize = 11.sp,
+                                color = Color(0xFF991B1B),
+                                lineHeight = 15.sp
                             )
                         }
                     }
@@ -617,7 +838,7 @@ fun OnDeviceCallScreen(
                     OutlinedTextField(
                         value = customTestInput,
                         onValueChange = { customTestInput = it },
-                        placeholder = { Text("Type custom words (e.g. give money)", fontSize = 11.sp) },
+                        placeholder = { Text("Type words to test AI scam analysis...", fontSize = 11.sp) },
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
@@ -638,21 +859,21 @@ fun OnDeviceCallScreen(
                         modifier = Modifier.height(46.dp),
                         contentPadding = PaddingValues(horizontal = 10.dp)
                     ) {
-                        Text("Verify", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Scan AI", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = "One-Tap Voice Verification Presets:",
+                    text = "One-Tap AI Threat Presets:",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF64748B)
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Presets Row 1 (Money & Coercion)
+                // Presets Row 1 (Digital Arrest, Family Emergency, Courier)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -664,14 +885,82 @@ fun OnDeviceCallScreen(
                             .weight(1f)
                             .padding(end = 3.dp)
                             .clickable {
-                                CallShieldManager.processSpokenText("Please give me money send 50000 rupees immediately")
+                                CallShieldManager.processSpokenText("This is CBI officer you are under digital arrest wire funds 50000 immediately")
                             }
                     ) {
                         Text(
-                            text = "Ask Money\n(50,000 Rs)",
+                            text = "Digital Arrest\n(98% Risk)",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF991B1B),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFEE2E2),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 2.dp)
+                            .clickable {
+                                CallShieldManager.processSpokenText("Your son had serious hospital accident send bail money immediately")
+                            }
+                    ) {
+                        Text(
+                            text = "Family Emergency\n(96% Risk)",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF991B1B),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFEE2E2),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 3.dp)
+                            .clickable {
+                                CallShieldManager.processSpokenText("Customs seized narcotics in your FedEx parcel do not disconnect")
+                            }
+                    ) {
+                        Text(
+                            text = "FedEx Drugs\n(95% Risk)",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF991B1B),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Presets Row 2 (Ask Money, Marathi, Hindi)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFEF3C7),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 3.dp)
+                            .clickable {
+                                CallShieldManager.processSpokenText("Please give me money send 50000 rupees immediately to UPI")
+                            }
+                    ) {
+                        Text(
+                            text = "Ask 50,000 Rs\n(88% Risk)",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF92400E),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(vertical = 6.dp)
                         )
@@ -720,7 +1009,7 @@ fun OnDeviceCallScreen(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Presets Row 2 (Digital Arrest, Safe Voice, Clear Memory)
+                // Presets Row 3 (KYC/OTP, Safe Voice, Clear Memory)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -732,11 +1021,11 @@ fun OnDeviceCallScreen(
                             .weight(1f)
                             .padding(end = 4.dp)
                             .clickable {
-                                CallShieldManager.processSpokenText("This is CBI officer you are under digital arrest wire funds")
+                                CallShieldManager.processSpokenText("Your bank account suspended share OTP and install AnyDesk")
                             }
                     ) {
                         Text(
-                            text = "Digital Arrest\n(Threat)",
+                            text = "OTP / KYC\n(92% Risk)",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF991B1B),
@@ -756,7 +1045,7 @@ fun OnDeviceCallScreen(
                             }
                     ) {
                         Text(
-                            text = "Natural Safe\nVoice",
+                            text = "Natural Safe\nVoice (14%)",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF166534),

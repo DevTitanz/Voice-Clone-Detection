@@ -21,6 +21,9 @@ data class CallShieldUiState(
     val detectedEmotion: String = "Calm / Neutral",
     val emotionIncongruenceFlag: String? = null,
     val scamThreatCategory: String? = null,
+    val threatLevel: String = "SAFE",
+    val aiExplanation: String = "Normal conversational speech patterns.",
+    val matchedKeywords: List<String> = emptyList(),
     val liveTranscript: String = "",
     val audioRmsDb: Float = 0f,
     val isAudioSignalDetected: Boolean = false,
@@ -114,6 +117,9 @@ object CallShieldManager {
                 detectedEmotion = "Calm / Neutral",
                 emotionIncongruenceFlag = null,
                 scamThreatCategory = null,
+                threatLevel = "SAFE",
+                aiExplanation = "Normal conversational speech patterns.",
+                matchedKeywords = emptyList(),
                 liveTranscript = "",
                 audioRmsDb = 0f,
                 isAudioSignalDetected = false,
@@ -138,6 +144,9 @@ object CallShieldManager {
             current.copy(
                 liveTranscript = textChunk.trim(),
                 scamThreatCategory = intent.detectedThreatCategory,
+                threatLevel = intent.threatLevel,
+                aiExplanation = intent.aiExplanation,
+                matchedKeywords = intent.matchedKeywords,
                 currentRiskScore = fusedRisk,
                 classification = if (fusedRisk >= 70.0) "HIGH_RISK" else "LOW_RISK",
                 classificationLabel = if (isScam) "Scam Intent: ${intent.detectedThreatCategory ?: "Urgent Coercion"}" else current.classificationLabel
@@ -163,7 +172,10 @@ object CallShieldManager {
                 currentRiskScore = fusedRisk,
                 classification = if (fusedRisk >= 70.0) "HIGH_RISK" else result.classification,
                 classificationLabel = if (intent.isScamSuspected) "Scam Intent: ${intent.detectedThreatCategory ?: "Urgent Coercion"}" else result.classificationLabel,
-                scamThreatCategory = intent.detectedThreatCategory
+                scamThreatCategory = intent.detectedThreatCategory,
+                threatLevel = intent.threatLevel,
+                aiExplanation = intent.aiExplanation,
+                matchedKeywords = intent.matchedKeywords
             )
         }
     }
@@ -174,6 +186,9 @@ object CallShieldManager {
             it.copy(
                 liveTranscript = "",
                 scamThreatCategory = null,
+                threatLevel = "SAFE",
+                aiExplanation = "Normal conversational speech patterns.",
+                matchedKeywords = emptyList(),
                 currentRiskScore = 14.0,
                 classification = "LOW_RISK",
                 classificationLabel = "Natural voice patterns detected"

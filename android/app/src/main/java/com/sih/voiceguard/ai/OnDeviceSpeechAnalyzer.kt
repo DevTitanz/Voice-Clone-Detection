@@ -26,15 +26,6 @@ class OnDeviceSpeechAnalyzer {
         val severity: String // "CRITICAL", "HIGH", "MODERATE"
     )
 
-    data class IntentResult(
-        val isScamSuspected: Boolean,
-        val detectedThreatCategory: String?,
-        val matchedKeywords: List<String>,
-        val currentTranscriptSnippet: String,
-        val language: Language,
-        val riskScoreBoost: Double = 0.0
-    )
-
     private val ephemeralBuffer = StringBuilder()
     var currentLanguage: Language = Language.ENGLISH
 
@@ -118,28 +109,71 @@ class OnDeviceSpeechAnalyzer {
         "rupees" to "Currency Demand",
         "send cash" to "Urgent Cash Demand",
         "emergency funds" to "Emergency Bail Extortion",
+        // Bail & Emergency Impersonation
         "bail money" to "Emergency Bail Extortion",
+        "emergency funds" to "Emergency Bail Extortion",
+        "hospital" to "Emergency Medical Coercion",
+        "hospital emergency" to "Emergency Medical Coercion",
+        "accident" to "Family Emergency Impersonation",
+        "kidnapped" to "Kidnapping / Ransom Extortion",
+        "kidnap" to "Kidnapping / Ransom Extortion",
+        "arrested" to "Arrest Coercion",
+
+        // Digital Payment & Banking
         "gpay" to "Digital Payment Extortion",
         "phonepe" to "Digital Payment Extortion",
         "paytm" to "Digital Payment Extortion",
         "upi" to "Digital Payment Extortion",
+        "upi pin" to "Credential / PIN Theft",
+        "share otp" to "Credential / OTP Theft",
+        "otp" to "Credential / OTP Theft",
+        "bank verification" to "Banking Fraud",
+        "account suspended" to "Account Freeze Threat",
+        "kyc" to "KYC / Account Expiry Scam",
+        "pan card" to "KYC / Document Theft",
+        "electricity" to "Utility Disconnection Scam",
+        "power disconnect" to "Utility Disconnection Scam",
+        "bill overdue" to "Utility Disconnection Scam",
+
+        // Remote Access Apps
+        "anydesk" to "Remote Access Trojan Scam",
+        "teamviewer" to "Remote Access Trojan Scam",
+        "rustdesk" to "Remote Access Trojan Scam",
+        "quicksupport" to "Remote Access Trojan Scam",
+
         // Digital Arrest & Legal Threats
         "digital arrest" to "Digital Arrest Fraud",
         "cbi" to "CBI Impersonation",
         "cbi officer" to "CBI Impersonation",
         "police" to "Police Impersonation",
+        "police station" to "Police Impersonation",
         "police warrant" to "Fake Arrest Warrant",
+        "court warrant" to "Fake Arrest Warrant",
         "customs parcel" to "Customs Extortion",
         "contraband" to "Contraband / Narcotics Threat",
         "narcotics" to "Contraband / Narcotics Threat",
         "drugs in parcel" to "Contraband / Narcotics Threat",
-        "share otp" to "Credential / OTP Theft",
-        "otp" to "Credential / OTP Theft",
-        "bank verification" to "Banking Fraud",
-        "account suspended" to "Account Freeze Threat",
+        "fedex" to "Fake Courier / Customs Scam",
+        "bluedart" to "Fake Courier / Customs Scam",
+        "delhivery" to "Fake Courier / Customs Scam",
+
+        // High-Pressure Urgency
         "immediately" to "High-Pressure Urgency",
         "right now" to "High-Pressure Urgency",
-        "urgent" to "High-Pressure Urgency"
+        "urgent" to "High-Pressure Urgency",
+        "do not disconnect" to "Coercion / Call Isolation",
+        "don't hang up" to "Coercion / Call Isolation"
+    )
+
+    data class IntentResult(
+        val isScamSuspected: Boolean,
+        val detectedThreatCategory: String?,
+        val matchedKeywords: List<String>,
+        val currentTranscriptSnippet: String,
+        val language: Language,
+        val riskScoreBoost: Double = 0.0,
+        val threatLevel: String = "SAFE",
+        val aiExplanation: String = "Normal conversational speech patterns."
     )
 
     /**
@@ -172,7 +206,7 @@ class OnDeviceSpeechAnalyzer {
             }
         }
 
-        // Also cross-check English loanwords commonly used in Indian calls
+        // Cross-check English loanwords commonly used in Indian calls
         if (currentLanguage != Language.ENGLISH) {
             for ((keyword, category) in englishScamKeywords) {
                 if (text.contains(keyword.lowercase()) && !matches.contains(keyword)) {
@@ -184,18 +218,62 @@ class OnDeviceSpeechAnalyzer {
 
         val snippet = if (text.length > 80) "..." + text.takeLast(80) else text
 
-        // Calculate substantial risk boost so money demands and coercion immediately elevate the app risk score
-        val boost = when {
-            matches.any {
-                it.contains("money") || it.contains("पैसे") || it.contains("पैसा") ||
-                it.contains("रुपये") || it.contains("रुपया") || it.contains("cash") ||
-                it.contains("कैश") || it.contains("कॅश") || it.contains("wire") ||
-                it.contains("transfer") || it.contains("gpay") || it.contains("phonepe") ||
-                it.contains("paytm") || it.contains("upi")
-            } -> 85.0
-            matches.any { it.contains("arrest") || it.contains("अटक") || it.contains("cbi") || it.contains("police") || it.contains("otp") } -> 80.0
-            matches.isNotEmpty() -> 75.0
-            else -> 0.0
+        // Calculate risk boost and AI explanation based on matched vectors
+        val hasMoney = matches.any {
+            it.contains("money") || it.contains("पैसे") || it.contains("पैसा") ||
+            it.contains("रुपये") || it.contains("रुपया") || it.contains("cash") ||
+            it.contains("कैश") || it.contains("कॅश") || it.contains("wire") ||
+            it.contains("transfer") || it.contains("gpay") || it.contains("phonepe") ||
+            it.contains("paytm") || it.contains("upi")
+        }
+        val hasArrest = matches.any {
+            it.contains("arrest") || it.contains("अटक") || it.contains("cbi") ||
+            it.contains("police") || it.contains("customs") || it.contains("contraband") ||
+            it.contains("narcotics") || it.contains("fedex")
+        }
+        val hasCredentials = matches.any { it.contains("otp") || it.contains("ओटीपी") || it.contains("pin") || it.contains("kyc") || it.contains("anydesk") }
+        val hasEmergency = matches.any { it.contains("accident") || it.contains("hospital") || it.contains("kidnap") || it.contains("bail") }
+
+        val boost: Double
+        val threatLevel: String
+        val explanation: String
+
+        when {
+            hasArrest && hasMoney -> {
+                boost = 98.0
+                threatLevel = "CRITICAL"
+                explanation = "Coercive Digital Arrest detected: Impersonating law enforcement to demand direct funds."
+            }
+            hasEmergency && hasMoney -> {
+                boost = 96.0
+                threatLevel = "CRITICAL"
+                explanation = "AI Voice Cloning Emergency Scam detected: Fabricating accident/kidnapping to extort immediate payment."
+            }
+            hasCredentials -> {
+                boost = 92.0
+                threatLevel = "HIGH"
+                explanation = "Credential harvesting detected: Caller demanding OTP, PIN, or remote desktop installation."
+            }
+            hasMoney -> {
+                boost = 88.0
+                threatLevel = "HIGH"
+                explanation = "High-urgency financial transaction demanded by caller."
+            }
+            hasArrest -> {
+                boost = 85.0
+                threatLevel = "HIGH"
+                explanation = "Law enforcement or customs intimidation detected."
+            }
+            matches.isNotEmpty() -> {
+                boost = 78.0
+                threatLevel = "SUSPICIOUS"
+                explanation = "High-pressure urgency markers flagged in spoken dialogue."
+            }
+            else -> {
+                boost = 0.0
+                threatLevel = "SAFE"
+                explanation = "Natural conversational speech patterns."
+            }
         }
 
         return IntentResult(
@@ -204,7 +282,9 @@ class OnDeviceSpeechAnalyzer {
             matchedKeywords = matches,
             currentTranscriptSnippet = snippet.trim(),
             language = currentLanguage,
-            riskScoreBoost = boost
+            riskScoreBoost = boost,
+            threatLevel = threatLevel,
+            aiExplanation = explanation
         )
     }
 
