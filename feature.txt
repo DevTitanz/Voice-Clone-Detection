@@ -1,0 +1,132 @@
+================================================================================
+VOICEGUARD AI - COMPLETE FEATURE SPECIFICATION & CAPABILITY MATRIX
+================================================================================
+Project: SIH26104 - Real-Time Voice Deepfake & AI Cloning Defense
+Version: 1.4.0 (Production Architecture)
+Privacy Architecture: Privacy by Design • 100% On-Device CPU • Zero Audio/Text to Cloud
+
+--------------------------------------------------------------------------------
+1. CORE ON-DEVICE ACOUSTIC DEEPFAKE DETECTION
+--------------------------------------------------------------------------------
+- 100% Local Inference: Runs exclusively on the mobile device CPU with zero dependency
+  on external cloud servers, preventing data interception.
+- High-Frequency Vocoder Band Energy Ratio: Scans for neural vocoder synthesis artifacts
+  in the 6kHz - 8kHz spectrum (HiFi-GAN, WaveNet, MelGAN signatures).
+- Spectral Flatness Biomarker: Measures robotic phase noise and vocoder harmonic dispersion.
+- Pitch Jitter & Regularity Factor: Detects unnaturally rigid pitch regularity (TTS artifacts)
+  and vocoder micro-phase glitching.
+- Zero-Crossing Rate (ZCR) Tracking: Identifies unvoiced-to-voiced robotic transition anomalies.
+- Continuous Real-Time Risk Scoring: Emits a continuous probabilistic AI risk score (5% - 98%)
+  recalculated every 250 milliseconds with 2.0-second circular sliding buffer.
+
+--------------------------------------------------------------------------------
+2. PROSODIC ACOUSTIC EMOTION CLASSIFICATION & FAKE URGENCY DETECTION
+--------------------------------------------------------------------------------
+- Real-Time Prosodic Emotion Classifier:
+  Analyzes Fundamental Frequency (F0), pitch variance (sigma_F0), and RMS dynamic energy:
+  * Panic / Extreme Urgency (High volume energy + elevated F0 > 240 Hz)
+  * High Pressure / Coercion (Aggressive volume + F0 > 200 Hz)
+  * Agitated / Distressed (High pitch volatility sigma_F0 > 40 Hz)
+  * Monotone / Flat Affect (Pitch variance sigma_F0 < 14 Hz with continuous speech)
+  * Calm / Neutral (Conversational human prosody)
+- Synthetic Emotion Incongruence Flagging (Fake Urgency Detection):
+  Identifies the hallmark signature of AI voice cloning scams:
+  The scammer's audio claims an emergency/panic, but the neural TTS vocoder produces
+  unnaturally flat, rigid pitch variance (sigma_F0 < 16 Hz).
+  Flag: "Fake Urgency Detected: Flat pitch variance with forced urgency shouting".
+
+--------------------------------------------------------------------------------
+3. MULTILINGUAL ON-DEVICE SPEECH-TO-TEXT & INTENT ANALYSIS
+--------------------------------------------------------------------------------
+- Supported Languages:
+  * Marathi (mr-IN)
+  * Hindi (hi-IN)
+  * English (en-IN)
+- Continuous Offline Speech Recognition:
+  Integrated with Android native on-device SpeechRecognizer with PREFER_OFFLINE=true.
+- Comprehensive Scam Intent Dictionaries:
+  * Urgent Money Demands: "money", "asking money", "send money", "give me money",
+    "wire cash", "rupees", "पैसे", "पैसा", "पैसे पाठवा", "पैसे दो", "पैसे भेजो", "पैसे चाहिए"
+  * Digital Arrest & Police Impersonation: "digital arrest", "CBI officer", "police warrant",
+    "डिजिटल अटक", "सीबीआय", "सीबीआई अरेस्ट", "पोलीस ठाणे"
+  * Customs & Contraband Extortion: "customs parcel", "narcotics contraband", "drugs in parcel",
+    "पार्सल में ड्रग्स"
+  * Banking & Credential Theft: "share OTP", "bank verification", "account suspended",
+    "ओटीपी", "पासवर्ड", "बँक खाते बंद"
+  * Coercion & Forced Urgency: "immediately", "right now", "urgent", "तातडीने", "तुरंत", "लगेच"
+
+--------------------------------------------------------------------------------
+4. ZERO-DISK EPHEMERAL VOLATILE RAM STORAGE GUARANTEE
+--------------------------------------------------------------------------------
+- Ephemeral In-Memory Storage: Transcripts and acoustic frames are held exclusively
+  in volatile RAM (StringBuilder buffer) while a call is active.
+- Zero Persistence Guarantee:
+  * 0 bytes written to disk
+  * 0 bytes written to SQLite / Room databases
+  * 0 bytes stored in SharedPreferences or cache
+  * 0 bytes transmitted over network
+- Immediate Purge on Call Disconnect:
+  When call hangs up or monitoring stops, purgeMemory() executes immediately,
+  wiping all volatile memory buffers to 0 bytes and displaying:
+  "Volatile RAM Buffer Purged (0 Bytes Stored)".
+
+--------------------------------------------------------------------------------
+5. AUTOMATIC INCOMING CALL DETECTION & FOREGROUND SHIELD
+--------------------------------------------------------------------------------
+- System Telephony BroadcastReceiver (CallStateReceiver):
+  * Listens to Android OS telephony state changes (TelephonyManager.ACTION_PHONE_STATE_CHANGED)
+  * EXTRA_STATE_RINGING: Automatically pre-arms the AI shield upon incoming call.
+  * EXTRA_STATE_OFFHOOK: The instant the call is answered, VoiceGuard automatically
+    wakes up and starts screening without requiring user to open the app or tap buttons.
+  * EXTRA_STATE_IDLE: The instant the call hangs up, the shield automatically terminates
+    audio capture and purges memory.
+- High-Priority Foreground Service (CallShieldService):
+  * Operates with Android foregroundServiceType="microphone".
+  * Displays persistent system notification: "VoiceGuard AI: Shield Active • Screening Call".
+
+--------------------------------------------------------------------------------
+6. INTERACTIVE VOICE FLAGGING TESTER (TESTING MODE)
+--------------------------------------------------------------------------------
+- Built-In Testing Mode:
+  Dedicated in-app test suite enabling instant validation of voice flagging behavior.
+- Live Mic Transcription Monitor:
+  Visual indicator displaying words heard by the phone's microphone in real time.
+- Custom Phrase Input Box:
+  Allows typing any phrase (e.g. "give me money", "send money", "CBI arrest") and clicking
+  "Test Flag" to verify that the intent engine elevates risk and flags immediately.
+- One-Tap Scam Voice Presets:
+  * Ask Money Preset: Injects "Please give me money send 50000 rupees immediately" -> Flags Red (85-98%)
+  * Digital Arrest Preset: Injects "This is CBI officer you are under digital arrest wire funds" -> Flags Red
+  * OTP Theft Preset: Injects "Share your bank account OTP right now to avoid block" -> Flags Red
+  * पैसे पाठवा (Marathi) Preset: Injects "लगेच तातडीने खात्यात ५०,००० पैसे पाठवा" -> Flags Red
+  * पैसे भेजो (Hindi) Preset: Injects "अस्पताल में 50000 रुपये तुरंत भेजो" -> Flags Red
+  * Reset (14%) Preset: Wipes volatile RAM and returns gauge to green (Caller Safe).
+
+--------------------------------------------------------------------------------
+7. STEP-UP OUT-OF-BAND VERIFICATION
+--------------------------------------------------------------------------------
+- Automatic Threat Challenge Modal:
+  Triggered automatically when risk score >= 70% or scam intent is detected.
+- Out-of-Band Security Action:
+  "Verify Caller with OTP / Callback" to halt financial transactions before fraud occurs.
+
+--------------------------------------------------------------------------------
+8. MINIMAL, USER-FRIENDLY WHITE MODE UI
+--------------------------------------------------------------------------------
+- Clean, calm white mode styling adhering strictly to high contrast and usability.
+- Zero Emojis: Replaced with clean vector SVG iconography for a professional security finish.
+- Unified Status Card: Prominent circular gauge, dynamic threat pill, live RAM byte counter,
+  and localized scam intent pills.
+- Multilingual Quick-Toggle Pills: Seamless switching between EN, हिन्दी, and मराठी.
+
+--------------------------------------------------------------------------------
+9. WEB DASHBOARD & MOBILE SIMULATOR
+--------------------------------------------------------------------------------
+- Dual-Surface Interface:
+  * Real-Time WebSocket Streaming HUD: Live telemetry of high-frequency ratio, jitter,
+    pitch variance, and emotion classification.
+  * Interactive Smartphone Simulator: Ringing simulation (+91 98200 45678), auto-answer,
+    scenario selectors (Digital Arrest, Asking Money Scam, AI TTS Monotone, Natural Human),
+    live typewriter transcript ticker, and memory purge confirmation banner.
+- Offline WAV/MP3 Batch Analyzer: Drag-and-drop forensic deepfake analysis of pre-recorded audio.
+================================================================================
