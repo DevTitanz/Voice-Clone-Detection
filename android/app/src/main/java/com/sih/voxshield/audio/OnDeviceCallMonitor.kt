@@ -1,12 +1,12 @@
-package com.sih.voiceguard.audio
+package com.sih.voxshield.audio
 
 import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
-import com.sih.voiceguard.ai.OnDeviceDetectionResult
-import com.sih.voiceguard.ai.OnDeviceVoiceDetector
+import com.sih.voxshield.ai.OnDeviceDetectionResult
+import com.sih.voxshield.ai.OnDeviceVoiceDetector
 import kotlinx.coroutines.*
 import java.util.concurrent.atomic.AtomicBoolean
 

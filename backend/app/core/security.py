@@ -40,7 +40,7 @@ def create_access_token(
         "role": role,
         "iat": now,
         "exp": expire,
-        "iss": "voiceguard-auth-service",
+        "iss": "voxshield-auth-service",
     }
     if extra_claims:
         to_encode.update(extra_claims)

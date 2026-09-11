@@ -294,7 +294,7 @@ export default function FileAnalyzer({ token, onTriggerStepUp, onTokenExpired })
               <div style={{ fontSize: "32px", fontWeight: 900, color: result.risk_score >= 70 ? "var(--accent-crimson)" : result.risk_score >= 40 ? "var(--accent-amber)" : "var(--accent-emerald)" }}>
                 {result.risk_score}%
               </div>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>VoiceGuard Risk Score</div>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>VoxShield Risk Score</div>
             </div>
           </div>
 

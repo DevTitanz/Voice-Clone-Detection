@@ -11,7 +11,7 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
 
   const fillAdminPreset = () => {
     setUsername("admin_demo");
-    setEmail("admin@voiceguard.ai");
+    setEmail("admin@voxshield.ai");
     setPassword("SecurePassword123!");
     setErrorMsg(null);
   };
@@ -75,7 +75,7 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
               <ShieldIcon size={20} />
             </span>
             <h3 style={{ fontSize: "18px", fontWeight: 700 }}>
-              {isLogin ? "Sign In to VoiceGuard" : "Create Protected Account"}
+              {isLogin ? "Sign In to VoxShield" : "Create Protected Account"}
             </h3>
           </div>
           <button className="btn btn-outline" style={{ padding: "6px", display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onClose} aria-label="Close">

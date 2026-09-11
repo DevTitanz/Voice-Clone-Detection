@@ -11,9 +11,9 @@ import AuthModal from "./components/AuthModal";
 import { MicIcon, UploadIcon, HistoryIcon, SmartphoneIcon, SettingsIcon } from "./components/Icons";
 
 export default function App() {
-  const [token, setToken] = useState(() => localStorage.getItem("voiceguard_token") || "");
+  const [token, setToken] = useState(() => localStorage.getItem("voxshield_token") || "");
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem("voiceguard_user");
+    const saved = localStorage.getItem("voxshield_user");
     return saved ? JSON.parse(saved) : null;
   });
 
@@ -22,11 +22,11 @@ export default function App() {
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [currentThresholdHigh, setCurrentThresholdHigh] = useState(70.0);
-  const [theme, setTheme] = useState(() => localStorage.getItem("voiceguard_theme") || "light");
+  const [theme, setTheme] = useState(() => localStorage.getItem("voxshield_theme") || "light");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("voiceguard_theme", theme);
+    localStorage.setItem("voxshield_theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {
@@ -56,7 +56,7 @@ export default function App() {
   const handleQuickDemoLogin = async () => {
     try {
       // Clear stale token
-      localStorage.removeItem("voiceguard_token");
+      localStorage.removeItem("voxshield_token");
       // Register or login default demo admin
       const res = await fetch("http://localhost:8000/api/v1/auth/login", {
         method: "POST",
@@ -74,7 +74,7 @@ export default function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             username: "admin_demo",
-            email: "admin@voiceguard.ai",
+            email: "admin@voxshield.ai",
             password: "SecurePassword123!"
           })
         });
@@ -96,15 +96,15 @@ export default function App() {
   const handleAuthSuccess = (newToken, user) => {
     setToken(newToken);
     setCurrentUser(user);
-    localStorage.setItem("voiceguard_token", newToken);
-    localStorage.setItem("voiceguard_user", JSON.stringify(user));
+    localStorage.setItem("voxshield_token", newToken);
+    localStorage.setItem("voxshield_user", JSON.stringify(user));
   };
 
   const handleLogout = () => {
     setToken("");
     setCurrentUser(null);
-    localStorage.removeItem("voiceguard_token");
-    localStorage.removeItem("voiceguard_user");
+    localStorage.removeItem("voxshield_token");
+    localStorage.removeItem("voxshield_user");
     setActiveTab("live");
   };
 

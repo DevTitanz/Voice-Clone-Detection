@@ -1,5 +1,5 @@
 Write-Host "===================================================" -ForegroundColor Cyan
-Write-Host "  Starting VoiceGuard AI (Backend + Frontend)" -ForegroundColor Green
+Write-Host "  Starting VoxShield AI (Backend + Frontend)" -ForegroundColor Green
 Write-Host "===================================================" -ForegroundColor Cyan
 
 $root = $PSScriptRoot

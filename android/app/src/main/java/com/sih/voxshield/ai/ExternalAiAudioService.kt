@@ -1,4 +1,4 @@
-package com.sih.voiceguard.ai
+package com.sih.voxshield.ai
 
 import android.util.Base64
 import android.util.Log
@@ -80,7 +80,7 @@ class ExternalAiAudioService {
         var lastException: Exception? = null
 
         val prompt = """
-            You are VoiceGuard AI, an elite telecommunication forensic expert analyzing phone call audio and speech directly.
+            You are VoxShield AI, an elite telecommunication forensic expert analyzing phone call audio and speech directly.
             Your task:
             1. Transcribe verbatim what was spoken in the audio (in whatever language spoken: English, Hindi, Marathi, etc.).
             2. Determine if the caller is an AI synthetic voice clone or natural biological human.

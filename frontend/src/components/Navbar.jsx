@@ -18,7 +18,7 @@ export default function Navbar({
           <ShieldIcon size={22} />
         </div>
         <div>
-          <h1 className="brand-title">VoiceGuard AI</h1>
+          <h1 className="brand-title">VoxShield AI</h1>
           <p className="brand-subtitle">SIH26104 • Synthetic Voice Detection System</p>
         </div>
       </div>

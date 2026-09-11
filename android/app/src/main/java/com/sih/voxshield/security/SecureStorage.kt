@@ -1,4 +1,4 @@
-package com.sih.voiceguard.security
+package com.sih.voxshield.security
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -14,7 +14,7 @@ class SecureStorage(context: Context) {
     private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
 
     private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
-        "voiceguard_secure_prefs",
+        "voxshield_secure_prefs",
         masterKeyAlias,
         context,
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,

@@ -1,4 +1,4 @@
-package com.sih.voiceguard.service
+package com.sih.voxshield.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -10,7 +10,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import com.sih.voiceguard.MainActivity
+import com.sih.voxshield.MainActivity
 import kotlinx.coroutines.*
 
 /**
@@ -25,10 +25,10 @@ import kotlinx.coroutines.*
 class CallShieldService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "voiceguard_call_shield"
+        const val CHANNEL_ID = "voxshield_call_shield"
         const val NOTIFICATION_ID = 1001
-        const val ACTION_START_CALL_SHIELD = "com.sih.voiceguard.action.START_SHIELD"
-        const val ACTION_STOP_CALL_SHIELD = "com.sih.voiceguard.action.STOP_SHIELD"
+        const val ACTION_START_CALL_SHIELD = "com.sih.voxshield.action.START_SHIELD"
+        const val ACTION_STOP_CALL_SHIELD = "com.sih.voxshield.action.STOP_SHIELD"
         const val EXTRA_PHONE_NUMBER = "extra_phone_number"
 
         @Volatile
@@ -76,7 +76,7 @@ class CallShieldService : Service() {
         )
 
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("VoiceGuard AI: Shield Active")
+            .setContentTitle("VoxShield AI: Shield Active")
             .setContentText("Screening incoming call ($phoneNumber) for AI deepfakes • 100% on-device")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentIntent(pendingIntent)
@@ -104,7 +104,7 @@ class CallShieldService : Service() {
                     }
 
                     val updatedNotification = NotificationCompat.Builder(this@CallShieldService, CHANNEL_ID)
-                        .setContentTitle(if (state.currentRiskScore >= 70) "AI Voice Scam Suspected!" else "VoiceGuard AI: Shield Active")
+                        .setContentTitle(if (state.currentRiskScore >= 70) "AI Voice Scam Suspected!" else "VoxShield AI: Shield Active")
                         .setContentText(alertText)
                         .setSmallIcon(android.R.drawable.ic_lock_lock)
                         .setContentIntent(pendingIntent)
@@ -138,7 +138,7 @@ class CallShieldService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "VoiceGuard Live Call Shield",
+                "VoxShield Live Call Shield",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Active while screening incoming calls on-device"

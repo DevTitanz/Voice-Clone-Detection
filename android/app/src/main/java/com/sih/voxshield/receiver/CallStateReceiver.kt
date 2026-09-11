@@ -1,4 +1,4 @@
-package com.sih.voiceguard.receiver
+package com.sih.voxshield.receiver
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -6,9 +6,9 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.telephony.TelephonyManager
-import com.sih.voiceguard.MainActivity
-import com.sih.voiceguard.service.CallShieldService
-import com.sih.voiceguard.ui.FloatingShieldOverlay
+import com.sih.voxshield.MainActivity
+import com.sih.voxshield.service.CallShieldService
+import com.sih.voxshield.ui.FloatingShieldOverlay
 
 /**
  * CallStateReceiver:
@@ -30,7 +30,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 }
                 TelephonyManager.EXTRA_STATE_OFFHOOK -> {
                     // Call is answered and ongoing:
-                    com.sih.voiceguard.service.CallShieldManager.startInCallShield(context, incomingNumber)
+                    com.sih.voxshield.service.CallShieldManager.startInCallShield(context, incomingNumber)
 
                     // Display floating shield overlay over in-call dialer if permission granted
                     if (Settings.canDrawOverlays(context)) {
@@ -62,7 +62,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 }
                 TelephonyManager.EXTRA_STATE_IDLE -> {
                     // Call ended / hung up: stop shield, dismiss overlay, and purge volatile RAM
-                    com.sih.voiceguard.service.CallShieldManager.stopInCallShield()
+                    com.sih.voxshield.service.CallShieldManager.stopInCallShield()
 
                     try {
                         FloatingShieldOverlay.dismiss(context)

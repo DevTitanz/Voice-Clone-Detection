@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "VoiceGuard"
+rootProject.name = "VoxShield"
 include(":app")

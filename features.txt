@@ -1,5 +1,5 @@
 ================================================================================
-VOICEGUARD AI - COMPLETE FEATURE SPECIFICATION & CAPABILITY MATRIX
+VOXSHIELD AI - COMPLETE FEATURE SPECIFICATION & CAPABILITY MATRIX
 ================================================================================
 Project: SIH26104 - Real-Time Voice Deepfake & AI Voice Cloning Defense
 System Architecture: Dual-Surface (Native Android Mobile App + React Web Dashboard)
@@ -7,7 +7,7 @@ Privacy Architecture: Privacy by Design • 100% On-Device / Volatile RAM • Ze
 Version: 2.0.0 (Production Release)
 
 ================================================================================
-PART I: ANDROID MOBILE APPLICATION CAPABILITIES (com.sih.voiceguard)
+PART I: ANDROID MOBILE APPLICATION CAPABILITIES (com.sih.voxshield)
 ================================================================================
 
 1. AUTOMATED INCOMING CALL INTERCEPTION & TELEPHONY SHIELD
@@ -18,7 +18,7 @@ PART I: ANDROID MOBILE APPLICATION CAPABILITIES (com.sih.voiceguard)
   * EXTRA_STATE_RINGING: Automatically pre-arms the AI detection pipeline the
     instant an incoming cellular call is detected.
   * EXTRA_STATE_OFFHOOK: The exact millisecond the user answers the call,
-    VoiceGuard automatically awakens in the background and initiates real-time
+    VoxShield automatically awakens in the background and initiates real-time
     voice screening—requiring zero user taps or app foregrounding.
   * EXTRA_STATE_IDLE: The millisecond the call disconnects, the shield
     automatically terminates audio capture, purges memory, and dismisses active badges.
@@ -26,18 +26,9 @@ PART I: ANDROID MOBILE APPLICATION CAPABILITIES (com.sih.voiceguard)
   * Operates with Android foregroundServiceType="microphone" to guarantee
     uninterrupted background execution on Android 12, 13, 14, and 15.
   * Displays persistent system notification:
-    "VoiceGuard AI: Shield Active • Screening Call".
+    "VoxShield AI: Shield Active • Screening Call".
 
-2. WHATSAPP & WHATSAPP BUSINESS VOIP CALL INTERCEPTOR
---------------------------------------------------------------------------------
-- NotificationListenerService (WhatsAppCallListenerService):
-  * Intercepts incoming and ongoing VoIP calls from both standard WhatsApp
-    (com.whatsapp) and WhatsApp Business (com.whatsapp.w4b).
-  * Evaluates notification categories (Notification.CATEGORY_CALL) and localized
-    call tokens in real-time ("call", "कॉल", "calling", "incoming", "ongoing").
-  * Automatically arms the voice screening pipeline for over-the-top (OTT) VoIP
-    scams without requiring cellular network involvement.
-  * Permission health check: In-app prompt and direct navigation to Android
+ direct navigation to Android
     Notification Access Settings if disabled.
   * One-tap WhatsApp Call Simulator button in the UI for instant testing.
 
@@ -137,7 +128,7 @@ PART I: ANDROID MOBILE APPLICATION CAPABILITIES (com.sih.voiceguard)
 7. 10-SECOND AUTOMATIC CALL EVALUATION & DYNAMIC TESTING ENGINE
 --------------------------------------------------------------------------------
 - Automated 10-Second Call Lifecycle:
-  * When an incoming normal phone call begins, VoiceGuard automatically displays
+  * When an incoming normal phone call begins, VoxShield automatically displays
     an active screening state ("SCREENING CALL (10s)...") with a live countdown timer.
   * During the first 10 seconds, background audio signals are monitored in real time.
   * At the exact 10-second mark, the evaluation automatically flags the call verdict:
@@ -428,5 +419,5 @@ Role-Based Access Control (Admin vs User)| N/A (Single User)  | YES (RBAC)
 Light / Dark Mode Cybernetic Theme       | White Mode Security| Dual Theme
 
 ================================================================================
-END OF SPECIFICATION - VOICEGUARD AI DEFENSE SYSTEM
+END OF SPECIFICATION - VOXSHIELD AI DEFENSE SYSTEM
 ================================================================================

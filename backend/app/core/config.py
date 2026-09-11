@@ -6,17 +6,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
-    PROJECT_NAME: str = "VoiceGuard AI - Real-Time Voice Cloning Detection"
+    PROJECT_NAME: str = "VoxShield AI - Real-Time Voice Cloning Detection"
     DEBUG: bool = False
 
     # Security & Auth
     # A safe default for development; in production, validated to require at least 32 characters
-    JWT_SECRET: str = "voiceguard_dev_secret_key_minimum_32_chars_long_abcdef123456789"
+    JWT_SECRET: str = "voxshield_dev_secret_key_minimum_32_chars_long_abcdef123456789"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours for development & testing
 
     # Database: Supports PostgreSQL (postgresql+asyncpg://...) or SQLite fallback for testing
-    DATABASE_URL: str = "sqlite+aiosqlite:///./voiceguard.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./voxshield.db"
 
     # CORS: Explicit allowlist, comma-separated
     CORS_ORIGINS: Union[List[str], str] = [
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # AI Detection Thresholds (Configurable on backend only)
     RISK_THRESHOLD_LOW: float = 40.0
     RISK_THRESHOLD_HIGH: float = 70.0
-    MODEL_VERSION: str = "voiceguard-v1.2-acoustic"
+    MODEL_VERSION: str = "voxshield-v1.2-acoustic"
 
     # Privacy & Limits
     ALLOW_PERSISTENT_AUDIO: bool = False

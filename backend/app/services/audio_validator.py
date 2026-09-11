@@ -76,7 +76,7 @@ class SecureTemporaryAudioFile:
     def __enter__(self) -> str:
         # Secure random UUID name, never using user-supplied filename
         temp_dir = tempfile.gettempdir()
-        safe_name = f"voiceguard_priv_{uuid.uuid4().hex}{self.suffix}"
+        safe_name = f"voxshield_priv_{uuid.uuid4().hex}{self.suffix}"
         self.temp_path = os.path.join(temp_dir, safe_name)
 
         with open(self.temp_path, "wb") as f:

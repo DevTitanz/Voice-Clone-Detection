@@ -1,4 +1,4 @@
-package com.sih.voiceguard.ai
+package com.sih.voxshield.ai
 
 /**
  * OnDeviceSpeechAnalyzer:

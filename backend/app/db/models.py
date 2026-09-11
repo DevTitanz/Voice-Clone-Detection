@@ -41,7 +41,7 @@ class DetectionSession(Base):
     classification = Column(String(30), nullable=False)  # 'LOW_RISK', 'MEDIUM_RISK', 'HIGH_RISK'
     confidence = Column(Float, default=0.85, nullable=False)
     audio_duration_seconds = Column(Float, default=0.0, nullable=False)
-    model_version = Column(String(50), default="voiceguard-v1.2-acoustic", nullable=False)
+    model_version = Column(String(50), default="voxshield-v1.2-acoustic", nullable=False)
     verification_required = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
 

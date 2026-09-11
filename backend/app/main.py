@@ -70,7 +70,7 @@ async def health_check():
     """System health check and privacy assurance endpoint."""
     return {
         "status": "healthy",
-        "service": "VoiceGuard AI Detection Gateway",
+        "service": "VoxShield AI Detection Gateway",
         "version": "1.0.0",
         "ai_engine": settings.MODEL_VERSION,
         "audio_storage_policy": "ZERO_RETENTION_VOLATILE_MEMORY_ONLY",

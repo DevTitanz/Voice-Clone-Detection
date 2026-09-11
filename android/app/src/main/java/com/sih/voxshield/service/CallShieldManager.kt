@@ -1,13 +1,13 @@
-package com.sih.voiceguard.service
+package com.sih.voxshield.service
 
 import android.content.Context
 import android.media.AudioManager
 import android.util.Log
-import com.sih.voiceguard.ai.ExternalAiAnalysisResult
-import com.sih.voiceguard.ai.ExternalAiAudioService
-import com.sih.voiceguard.ai.OnDeviceDetectionResult
-import com.sih.voiceguard.ai.OnDeviceSpeechAnalyzer
-import com.sih.voiceguard.audio.OnDeviceCallMonitor
+import com.sih.voxshield.ai.ExternalAiAnalysisResult
+import com.sih.voxshield.ai.ExternalAiAudioService
+import com.sih.voxshield.ai.OnDeviceDetectionResult
+import com.sih.voxshield.ai.OnDeviceSpeechAnalyzer
+import com.sih.voxshield.audio.OnDeviceCallMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -68,7 +68,7 @@ object CallShieldManager {
     private var isNormalCallEvaluationActive = false
 
     private fun getNextNormalCallIndex(context: Context): Int {
-        val prefs = context.getSharedPreferences("voiceguard_call_testing", Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences("voxshield_call_testing", Context.MODE_PRIVATE)
         val count = prefs.getInt("normal_call_count", 0) + 1
         prefs.edit().putInt("normal_call_count", count).apply()
         return count

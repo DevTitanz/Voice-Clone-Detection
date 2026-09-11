@@ -1,4 +1,4 @@
-package com.sih.voiceguard
+package com.sih.voxshield
 
 import android.Manifest
 import android.app.Activity
@@ -39,12 +39,12 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.sih.voiceguard.ai.ExternalAiAudioService
-import com.sih.voiceguard.ai.OnDeviceSpeechAnalyzer
-import com.sih.voiceguard.security.SecureStorage
-import com.sih.voiceguard.service.CallShieldManager
-import com.sih.voiceguard.service.WhatsAppCallListenerService
-import com.sih.voiceguard.ui.FloatingShieldOverlay
+import com.sih.voxshield.ai.ExternalAiAudioService
+import com.sih.voxshield.ai.OnDeviceSpeechAnalyzer
+import com.sih.voxshield.security.SecureStorage
+import com.sih.voxshield.service.CallShieldManager
+import com.sih.voxshield.service.WhatsAppCallListenerService
+import com.sih.voxshield.ui.FloatingShieldOverlay
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -81,7 +81,7 @@ class MainActivity : ComponentActivity() {
         handleCallIntent(intent)
 
         setContent {
-            VoiceGuardTheme {
+            VoxShieldTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color(0xFFF8FAFC)
@@ -139,7 +139,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun VoiceGuardTheme(content: @Composable () -> Unit) {
+fun VoxShieldTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = lightColorScheme(
             primary = Color(0xFF059669),
@@ -221,7 +221,7 @@ fun OnDeviceCallScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "VoiceGuard",
+                        text = "VoxShield",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0F172A)
@@ -422,7 +422,7 @@ fun OnDeviceCallScreen(
                     text = if (hasNotificationAccess && hasOverlayPermission)
                         "WhatsApp call interception active. Incoming VoIP calls automatically trigger real-time AI screening with a floating security badge."
                     else
-                        "Enable permissions below so VoiceGuard can automatically intercept incoming WhatsApp calls and show the floating safety pill.",
+                        "Enable permissions below so VoxShield can automatically intercept incoming WhatsApp calls and show the floating safety pill.",
                     fontSize = 11.sp,
                     color = Color(0xFF64748B),
                     lineHeight = 16.sp

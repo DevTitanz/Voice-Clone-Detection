@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.sih.voiceguard"
+    namespace = "com.sih.voxshield"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.sih.voiceguard"
+        applicationId = "com.sih.voxshield"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

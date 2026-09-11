@@ -1,12 +1,12 @@
-package com.sih.voiceguard.service
+package com.sih.voxshield.service
 
 import android.app.Notification
 import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import com.sih.voiceguard.MainActivity
-import com.sih.voiceguard.ui.FloatingShieldOverlay
+import com.sih.voxshield.MainActivity
+import com.sih.voxshield.ui.FloatingShieldOverlay
 
 /**
  * WhatsAppCallListenerService:

@@ -1,4 +1,4 @@
-package com.sih.voiceguard.audio
+package com.sih.voxshield.audio
 
 import android.annotation.SuppressLint
 import android.media.AudioFormat

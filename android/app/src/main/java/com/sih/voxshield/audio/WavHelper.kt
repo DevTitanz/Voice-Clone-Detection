@@ -1,4 +1,4 @@
-package com.sih.voiceguard.audio
+package com.sih.voxshield.audio
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

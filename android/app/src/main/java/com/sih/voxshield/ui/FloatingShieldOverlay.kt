@@ -1,4 +1,4 @@
-package com.sih.voiceguard.ui
+package com.sih.voxshield.ui
 
 import android.content.Context
 import android.content.Intent
@@ -14,8 +14,8 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.sih.voiceguard.MainActivity
-import com.sih.voiceguard.service.CallShieldManager
+import com.sih.voxshield.MainActivity
+import com.sih.voxshield.service.CallShieldManager
 import kotlinx.coroutines.*
 
 /**
@@ -72,7 +72,7 @@ object FloatingShieldOverlay {
         }
 
         val titleView = TextView(appContext).apply {
-            text = "VoiceGuard AI: $callerName"
+            text = "VoxShield AI: $callerName"
             setTextColor(Color.WHITE)
             textSize = 12f
             paint.isFakeBoldText = true
@@ -186,7 +186,7 @@ object FloatingShieldOverlay {
     fun updateCaller(callerName: String) {
         val container = overlayView as? LinearLayout ?: return
         val titleView = container.getChildAt(0) as? TextView
-        titleView?.text = "VoiceGuard AI: $callerName"
+        titleView?.text = "VoxShield AI: $callerName"
     }
 
     fun dismiss(context: Context) {

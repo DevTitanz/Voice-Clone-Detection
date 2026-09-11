@@ -1,4 +1,4 @@
-package com.sih.voiceguard.ai
+package com.sih.voxshield.ai
 
 import kotlin.math.*
 
@@ -22,7 +22,7 @@ data class OnDeviceDetectionResult(
 class OnDeviceVoiceDetector {
 
     private val extractor = OnDeviceFeatureExtractor()
-    val modelVersion = "voiceguard-ondevice-v1.4-stabilized"
+    val modelVersion = "voxshield-ondevice-v1.4-stabilized"
 
     fun analyzeBuffer(samples: FloatArray, sampleRate: Int = 16000): OnDeviceDetectionResult {
         val features = extractor.extract(samples, sampleRate)

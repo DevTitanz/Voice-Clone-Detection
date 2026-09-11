@@ -3,7 +3,7 @@ from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
 # In production: "postgresql+asyncpg://user:pass@host/dbname"
-# In local dev: "sqlite+aiosqlite:///./voiceguard.db"
+# In local dev: "sqlite+aiosqlite:///./voxshield.db"
 DATABASE_URL = settings.DATABASE_URL
 
 # Safe connection arguments: SQLite needs check_same_thread=False; PostgreSQL uses default pooling

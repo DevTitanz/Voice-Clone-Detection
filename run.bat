@@ -1,15 +1,15 @@
 @echo off
-title VoiceGuard AI - Deepfake Defense
+title VoxShield AI - Deepfake Defense
 echo ===================================================
-echo   Starting VoiceGuard AI (Backend + Frontend)
+echo   Starting VoxShield AI (Backend + Frontend)
 echo ===================================================
 echo.
 
 :: Launch Backend in a separate window
-start "VoiceGuard AI - Backend API" cmd /k "cd /d "%~dp0backend" && venv\Scripts\uvicorn.exe app.main:app --reload --host 0.0.0.0 --port 8000"
+start "VoxShield AI - Backend API" cmd /k "cd /d "%~dp0backend" && venv\Scripts\uvicorn.exe app.main:app --reload --host 0.0.0.0 --port 8000"
 
 :: Launch Frontend in a separate window
-start "VoiceGuard AI - Web Dashboard" cmd /k "cd /d "%~dp0frontend" && npm run dev"
+start "VoxShield AI - Web Dashboard" cmd /k "cd /d "%~dp0frontend" && npm run dev"
 
 echo [OK] Backend starting on:  http://localhost:8000
 echo [OK] Swagger API Docs:     http://localhost:8000/docs

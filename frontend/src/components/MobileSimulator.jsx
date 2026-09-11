@@ -230,7 +230,7 @@ export default function MobileSimulator({ token, onTriggerStepUp }) {
   };
 
   // Trigger Incoming Call Simulation:
-  // Ringing -> VoiceGuard AI automatically detects incoming call -> answers and starts processing
+  // Ringing -> VoxShield AI automatically detects incoming call -> answers and starts processing
   const triggerIncomingCall = (phone = "+91 98200 45678") => {
     stopOnDeviceMonitoring();
     setCallerNumber(phone);
@@ -327,7 +327,7 @@ export default function MobileSimulator({ token, onTriggerStepUp }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <span className="pulse-dot" style={{ color: callState === "active" ? (riskScore >= 70 ? "#ef4444" : "#10b981") : (callState === "ringing" ? "#f59e0b" : "#94a3b8"), width: "8px", height: "8px" }} />
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-primary)" }}>VoiceGuard</span>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-primary)" }}>VoxShield</span>
               </div>
 
               {/* Language Selection Pills */}
@@ -653,7 +653,7 @@ export default function MobileSimulator({ token, onTriggerStepUp }) {
                 Shield Standing By
               </div>
               <p style={{ fontSize: "11px", color: "var(--text-secondary)", lineHeight: "1.4", marginBottom: "12px" }}>
-                VoiceGuard automatically detects incoming phone calls and starts screening without opening or tapping.
+                VoxShield automatically detects incoming phone calls and starts screening without opening or tapping.
               </p>
 
               {/* Volatile Memory Purged Indicator */}

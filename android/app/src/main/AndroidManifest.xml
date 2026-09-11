@@ -12,10 +12,10 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
-        android:name=".VoiceGuardApplication"
+        android:name=".VoxShieldApplication"
         android:allowBackup="false"
         android:icon="@android:drawable/ic_lock_lock"
-        android:label="VoiceGuard AI"
+        android:label="VoxShield AI"
         android:roundIcon="@android:drawable/ic_lock_lock"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar"
@@ -50,7 +50,7 @@
         <!-- WhatsApp VoIP Call Interceptor Notification Listener Service -->
         <service
             android:name=".service.WhatsAppCallListenerService"
-            android:label="VoiceGuard WhatsApp Call Shield"
+            android:label="VoxShield WhatsApp Call Shield"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
             <intent-filter>

@@ -7,14 +7,14 @@ from starlette.requests import Request
 from starlette.responses import Response, JSONResponse
 from app.core.config import settings
 
-logger = logging.getLogger("voiceguard.security")
+logger = logging.getLogger("voxshield.security")
 logger.setLevel(logging.INFO)
 # Avoid duplicate handlers if reloaded
 if not logger.handlers:
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
     formatter = logging.Formatter(
-        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "service": "voiceguard-api", %(message)s}'
+        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "service": "voxshield-api", %(message)s}'
     )
     ch.setFormatter(formatter)
     logger.addHandler(ch)
