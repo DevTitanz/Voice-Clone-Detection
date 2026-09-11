@@ -1,4 +1,4 @@
-# VoiceGuard AI 🛡️
+# VoxShield AI 🛡️
 ### Real-Time Voice Deepfake & AI Voice Cloning Defense System
 **Smart India Hackathon (SIH) • Problem Statement: SIH26104**  
 *Dual-Surface Architecture: Native Android Mobile Shield + React Web Dashboard + Forensic AI Gateway*
@@ -7,12 +7,12 @@
 
 ## 📌 Executive Summary
 
-**VoiceGuard AI** is an enterprise-grade, privacy-first cybersecurity system engineered to detect and neutralize synthetic voice clones, AI-generated audio deepfakes, and telephone fraud in real time. 
+**VoxShield AI** is an enterprise-grade, privacy-first cybersecurity system engineered to detect and neutralize synthetic voice clones, AI-generated audio deepfakes, and telephone fraud in real time. 
 
-With the rapid proliferation of zero-shot voice cloning technologies (ElevenLabs, VALL-E, HiFi-GAN, SpeechT5) and the surge in high-impact cyber extortion schemes—such as **"Digital Arrest" police impersonations, customs contraband scams, and emergency kidnapping fraud**—VoiceGuard AI delivers a proactive defensive perimeter.
+With the rapid proliferation of zero-shot voice cloning technologies (ElevenLabs, VALL-E, HiFi-GAN, SpeechT5) and the surge in high-impact cyber extortion schemes—such as **"Digital Arrest" police impersonations, customs contraband scams, and emergency kidnapping fraud**—VoxShield AI delivers a proactive defensive perimeter.
 
-VoiceGuard operates across a **dual-surface deployment**:
-1. **Native Android Application (`com.sih.voiceguard`)**: Intercepts incoming cellular and WhatsApp VoIP calls automatically, executing 100% on-device acoustic inference and offline multilingual scam intent detection with zero cloud audio transmission.
+VoxShield operates across a **dual-surface deployment**:
+1. **Native Android Application (`com.sih.voxshield`)**: Intercepts incoming cellular and WhatsApp VoIP calls automatically, executing 100% on-device acoustic inference and offline multilingual scam intent detection with zero cloud audio transmission.
 2. **Web Forensic Operations Center (`frontend`)**: Provides full-duplex WebSocket live stream inspection, deep forensic Log-Mel spectrogram visualization, smartphone simulation, and an auditable administrative security console.
 3. **High-Performance Forensic Gateway (`backend`)**: Asynchronous FastAPI microservice powered by an ensemble classifier combining acoustic signal physics with a convolutional neural network (FAD-CNN) operating on Log-Mel spectrograms.
 
@@ -22,7 +22,7 @@ VoiceGuard operates across a **dual-surface deployment**:
 
 ```mermaid
 flowchart TD
-    subgraph MobileApp ["Android Mobile Application (com.sih.voiceguard)"]
+    subgraph MobileApp ["Android Mobile Application (com.sih.voxshield)"]
         A1[Incoming Cellular Call] -->|TelephonyManager| A2[CallStateReceiver]
         A3[Incoming WhatsApp / WA Business] -->|NotificationListenerService| A4[WhatsAppCallListenerService]
         A2 --> A5[CallShieldService - Foreground Service]
@@ -114,14 +114,14 @@ Synthetic speech engines and neural vocoders (HiFi-GAN, WaveNet, MelGAN, BigVGAN
 
 ### 4. Prosodic Emotion Classification & "Fake Urgency" Incongruence
 Scammers utilizing cloned voices often attempt high-pressure coercion (e.g., screaming about an urgent arrest or accident). 
-- VoiceGuard classifies vocal emotion into 6 acoustic states:
+- VoxShield classifies vocal emotion into 6 acoustic states:
   1. **Panic / Extreme Urgency** (Elevated energy + $F_0 > 240\text{ Hz}$)
   2. **High Pressure / Coercion** (Aggressive volume + $F_0 > 200\text{ Hz}$)
   3. **Agitated / Distressed** (Pitch volatility $\sigma_{F_0} > 40\text{ Hz}$)
   4. **Monotone / Flat Affect** ($\sigma_{F_0} < 14\text{ Hz}$ with sustained vocalization)
   5. **Whisper / Low Energy** ($\text{RMS} < 0.02$)
   6. **Calm / Neutral** (Natural conversational prosody)
-- **Synthetic Emotion Incongruence Flag**: When a speaker's audio exhibits loud, urgent acoustic energy but the pitch variance remains unnaturally flat ($\sigma_{F_0} < 16\text{ Hz}$), VoiceGuard flags the call:
+- **Synthetic Emotion Incongruence Flag**: When a speaker's audio exhibits loud, urgent acoustic energy but the pitch variance remains unnaturally flat ($\sigma_{F_0} < 16\text{ Hz}$), VoxShield flags the call:
   > *"Fake Urgency Detected: Monotone pitch with forced urgency (AI Voice Clone Signature)."*
 
 ### 5. FAD-CNN Deep Learning Architecture
@@ -135,7 +135,7 @@ Scammers utilizing cloned voices often attempt high-pressure coercion (e.g., scr
 
 ## 🌐 Multilingual Scam Intent Recognition Engine
 
-Cloned voices are invariably paired with social engineering scripts. VoiceGuard features an offline multilingual speech-to-text parser coupled with localized scam keyword taxonomies across three languages:
+Cloned voices are invariably paired with social engineering scripts. VoxShield features an offline multilingual speech-to-text parser coupled with localized scam keyword taxonomies across three languages:
 
 ### Supported Languages
 - 🇮🇳 **Marathi (`mr-IN`)**
@@ -164,7 +164,7 @@ Cloned voices are invariably paired with social engineering scripts. VoiceGuard 
 
 ## 🔒 Privacy by Design (Zero-Retention Guarantee)
 
-VoiceGuard AI was architected from inception to satisfy the **Digital Personal Data Protection (DPDP) Act 2023** and **GDPR**:
+VoxShield AI was architected from inception to satisfy the **Digital Personal Data Protection (DPDP) Act 2023** and **GDPR**:
 
 1. **Volatile In-Memory Processing**: Incoming audio streams reside exclusively within an ephemeral sliding RAM buffer (`SlidingStreamBuffer` / short-lived byte arrays).
 2. **Zero Disk Storage**:
@@ -247,9 +247,9 @@ Voice-Clone-Detection-main/
         ├── build.gradle.kts       # Android app dependencies (Compose, OkHttp, Coroutines)
         └── src/main/
             ├── AndroidManifest.xml # Permissions (RECORD_AUDIO, SYSTEM_ALERT_WINDOW, etc.)
-            └── java/com/sih/voiceguard/
+            └── java/com/sih/voxshield/
                 ├── MainActivity.kt # Main Jetpack Compose screen & permission management
-                ├── VoiceGuardApplication.kt # Application class
+                ├── VoxShieldApplication.kt # Application class
                 ├── ai/
                 │   ├── OnDeviceFeatureExtractor.kt # Android CPU acoustic feature extraction
                 │   ├── OnDeviceVoiceDetector.kt    # On-device risk classification engine
@@ -287,7 +287,7 @@ Voice-Clone-Detection-main/
 
 ### Option A: One-Click Windows Launchers (Recommended)
 
-VoiceGuard includes automated launcher scripts that initialize both the backend API and the frontend dashboard in parallel:
+VoxShield includes automated launcher scripts that initialize both the backend API and the frontend dashboard in parallel:
 
 #### Using Command Prompt:
 ```cmd
@@ -375,17 +375,17 @@ Configuration settings are validated via Pydantic (`backend/app/core/config.py`)
 ```dotenv
 # Environment Mode
 ENVIRONMENT=development
-PROJECT_NAME="VoiceGuard AI - Real-Time Voice Cloning Detection"
+PROJECT_NAME="VoxShield AI - Real-Time Voice Cloning Detection"
 DEBUG=false
 
 # Security & Cryptography
-JWT_SECRET=voiceguard_dev_secret_key_minimum_32_chars_long_abcdef123456789
+JWT_SECRET=voxshield_dev_secret_key_minimum_32_chars_long_abcdef123456789
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
 # Database Connection (SQLite default, or PostgreSQL for production)
-DATABASE_URL=sqlite+aiosqlite:///./voiceguard.db
-# DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/voiceguard_db
+DATABASE_URL=sqlite+aiosqlite:///./voxshield.db
+# DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/voxshield_db
 
 # CORS Allowed Origins (Comma-separated)
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000
@@ -397,7 +397,7 @@ API_V1_PREFIX=/api/v1
 # AI Detection Risk Thresholds
 RISK_THRESHOLD_LOW=40.0
 RISK_THRESHOLD_HIGH=70.0
-MODEL_VERSION=voiceguard-v1.2-acoustic
+MODEL_VERSION=voxshield-v1.2-acoustic
 
 # Rate Limiting
 RATE_LIMIT_AUTH=10/minute
@@ -455,7 +455,7 @@ Full-duplex binary WebSocket for sub-second streaming audio screening.
     "detected_emotion": "Panic / Extreme Urgency",
     "emotion_incongruence_flag": "Fake Urgency Detected: Monotone pitch with forced urgency (AI Scam Signature)",
     "audio_duration_seconds": 4.25,
-    "model_version": "voiceguard-v1.2-acoustic+FADCNN",
+    "model_version": "voxshield-v1.2-acoustic+FADCNN",
     "features_summary": {
       "high_freq_ratio": 0.142,
       "spectral_flatness": 0.088,
@@ -505,7 +505,7 @@ pytest tests/ -v
 
 ## 👥 Smart India Hackathon (SIH) Credits
 
-- **Project Title**: VoiceGuard AI - Real-Time AI Voice Deepfake & Cloning Detection System
+- **Project Title**: VoxShield AI - Real-Time AI Voice Deepfake & Cloning Detection System
 - **Problem ID**: **SIH26104**
 - **Domain**: Cybersecurity, Artificial Intelligence, Telecommunications Security
 - **Target Audience**: Financial institutions, law enforcement agencies, telecom providers, and end-consumer mobile protection.
