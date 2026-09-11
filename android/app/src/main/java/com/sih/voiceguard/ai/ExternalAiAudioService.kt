@@ -31,7 +31,7 @@ data class ExternalAiAnalysisResult(
 class ExternalAiAudioService {
     companion object {
         private const val TAG = "ExternalAiService"
-        const val DEFAULT_GEMINI_KEY = "AQ.Ab8RN6JOx0U7vCGmNJNfI3eE5Q8rexNwbe1ZrVP4i8n4SwY8uA"
+        const val DEFAULT_GEMINI_KEY = ""
     }
 
     private val client = OkHttpClient.Builder()

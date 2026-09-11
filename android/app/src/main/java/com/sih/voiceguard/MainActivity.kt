@@ -168,9 +168,6 @@ fun OnDeviceCallScreen(
     var hasOverlayPermission by remember { mutableStateOf(isOverlayGranted(context)) }
     var isSimulatedOverlayActive by remember { mutableStateOf(false) }
 
-    var apiKeyInput by remember { mutableStateOf(secureStorage?.getAiApiKey() ?: ExternalAiAudioService.DEFAULT_GEMINI_KEY) }
-    var apiKeySaveFeedback by remember { mutableStateOf<String?>(null) }
-
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -200,8 +197,10 @@ fun OnDeviceCallScreen(
                 // Buffer 2.5 seconds of live call/mic speech directly
                 kotlinx.coroutines.delay(2500)
                 isDirectListeningActive = false
-                // Transcribe and analyze directly via multimodal AI without any Google dialogs
-                CallShieldManager.runExternalAiScan(apiKeyInput, coroutineScope)
+                val key = secureStorage?.getAiApiKey() ?: ""
+                if (key.isNotBlank()) {
+                    CallShieldManager.runExternalAiScan(key, coroutineScope)
+                }
             }
         }
     }
@@ -715,131 +714,6 @@ fun OnDeviceCallScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Verify Caller with OTP", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // 3.5 External Cloud AI Engine Card (Gemini / Groq / OpenAI API Key)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                if (apiKeyInput.isNotBlank()) Color(0xFF93C5FD) else Color(0xFFE2E8F0)
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.VpnKey,
-                            contentDescription = null,
-                            tint = Color(0xFF2563EB),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Cloud AI Forensic Key",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (apiKeyInput.isNotBlank()) Color(0xFFDCFCE7) else Color(0xFFF1F5F9)
-                    ) {
-                        Text(
-                            text = if (apiKeyInput.isNotBlank()) "CONFIGURED" else "OPTIONAL",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (apiKeyInput.isNotBlank()) Color(0xFF166534) else Color(0xFF64748B),
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = "Add a Google Gemini (AIzaSy...), Groq (gsk_...), or OpenAI key for cloud audio forensics during active calls.",
-                    fontSize = 11.sp,
-                    color = Color(0xFF64748B),
-                    lineHeight = 15.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = apiKeyInput,
-                        onValueChange = { apiKeyInput = it },
-                        placeholder = { Text("Paste Gemini or Groq API Key...", fontSize = 11.sp) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
-                        singleLine = true,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Button(
-                        onClick = {
-                            secureStorage?.saveAiApiKey(apiKeyInput)
-                            apiKeySaveFeedback = "Saved!"
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
-                        modifier = Modifier.height(44.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Text(apiKeySaveFeedback ?: "Save", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                // Cloud AI Trigger Button during call
-                if (apiKeyInput.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Button(
-                        onClick = {
-                            CallShieldManager.runExternalAiScan(apiKeyInput, coroutineScope)
-                        },
-                        enabled = !shieldState.isExternalAiRunning,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                    ) {
-                        if (shieldState.isExternalAiRunning) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Analyzing via Cloud AI...", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        } else {
-                            Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Run Deep Cloud AI Forensic Scan", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
                     }
                 }
             }
