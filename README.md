@@ -18,56 +18,6 @@ VoxShield operates across a **dual-surface deployment**:
 
 ---
 
-## 🏛️ System Architecture
-
-```mermaid
-flowchart TD
-    subgraph MobileApp ["Android Mobile Application (com.sih.voxshield)"]
-        A1[Incoming Cellular Call] -->|TelephonyManager| A2[CallStateReceiver]
-        A3[Incoming WhatsApp / WA Business] -->|NotificationListenerService| A4[WhatsAppCallListenerService]
-        A2 --> A5[CallShieldService - Foreground Service]
-        A4 --> A5
-        A5 --> A6[OnDeviceCallMonitor - AudioRecord 16kHz]
-        A6 --> A7[OnDeviceFeatureExtractor]
-        A6 --> A8[OnDeviceSpeechAnalyzer - Offline STT]
-        A7 --> A9[OnDeviceVoiceDetector - Rule & Biomarker Engine]
-        A8 --> A10[Multilingual Scam Intent Dictionaries]
-        A9 --> A11[FloatingShieldOverlay - In-Call WindowManager Pill]
-        A10 --> A11
-        A11 -->|Hang Up / Termination| A12[Ephemeral Memory Purge - 0 Bytes Retained]
-    end
-
-    subgraph WebApp ["Web Forensic Dashboard (React + Vite)"]
-        W1[Live Microphone / Synthetic Vocoder] -->|Web Audio API 16kHz PCM| W2[LiveCallStreamer]
-        W3[Forensic Audio File Upload] -->|WAV, MP3, OGG, FLAC| W4[FileAnalyzer]
-        W5[Multi-Scenario Testing] --> W6[MobileSimulator]
-        W7[Security Operations] --> W8[AdminPanel & CallHistory]
-    end
-
-    subgraph BackendAPI ["Backend Gateway & AI Pipeline (FastAPI + PyTorch)"]
-        B1[Security Middlewares - CSP, HSTS, CORS, SlowAPI Rate Limiting]
-        B2["WebSocket Stream Gateway (/api/v1/ws/stream)"]
-        B3["REST Endpoints (/api/v1/detect, /auth, /admin)"]
-        B4[Magic-Byte Audio Validator - Anti-Polyglot]
-        B5[SlidingStreamBuffer - 2.0s - 3.0s Volatile RAM Window]
-        B6[Acoustic Feature Extractor - STFT, Jitter, Flatness, 6-8kHz Band]
-        B7[Prosodic Emotion Classifier - Fake Urgency Detector]
-        B8[FAD-CNN Deep Model - 64 Mels x 128 Frames]
-        B9[Ensemble Blended Classifier - 60% Acoustic + 40% FAD-CNN]
-        B10[(Audit DB - SQLite / PostgreSQL - Metadata Only)]
-    end
-
-    W2 <-->|Full-Duplex Binary WS| B2
-    W4 -->|Multipart Upload| B3
-    B2 --> B5 --> B6 & B7 & B8 --> B9
-    B3 --> B4 --> B6 & B7 & B8 --> B9
-    B9 --> B10
-    B9 -->|Telemetry Update| W2
-    B9 -->|Analysis Result| W4
-```
-
----
-
 ## ⚡ Core Capabilities & Feature Matrix
 
 | Capability / Feature | Android Mobile App | Web SOC Dashboard | Backend Forensic Engine |
