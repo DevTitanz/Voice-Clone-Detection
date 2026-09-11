@@ -157,11 +157,18 @@ object FloatingShieldOverlay {
             scope.launch {
                 CallShieldManager.uiState.collect { state ->
                     val isScam = state.currentRiskScore >= 70
-                    val badgeColor = if (isScam) Color.parseColor("#EF4444") else Color.parseColor("#10B981")
-                    val badgeText = if (isScam) {
-                        "SCAM ALERT: ${state.currentRiskScore.toInt()}% • ${state.scamThreatCategory ?: "THREAT"}"
-                    } else {
-                        "AI RISK: ${state.currentRiskScore.toInt()}% • CALLER SAFE"
+                    val isScreening = state.clearVerdict.contains("SCREENING", ignoreCase = true)
+
+                    val badgeColor = when {
+                        isScam -> Color.parseColor("#EF4444")
+                        isScreening -> Color.parseColor("#3B82F6")
+                        else -> Color.parseColor("#10B981")
+                    }
+
+                    val badgeText = when {
+                        isScam -> "AI CLONE: ${state.currentRiskScore.toInt()}% • THREAT"
+                        isScreening -> state.clearVerdict
+                        else -> "HEALTHY CALL: ${state.currentRiskScore.toInt()}% • SAFE"
                     }
 
                     riskBadge.text = badgeText

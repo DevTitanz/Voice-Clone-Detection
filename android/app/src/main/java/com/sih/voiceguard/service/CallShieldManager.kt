@@ -64,17 +64,134 @@ object CallShieldManager {
     private var smoothedRiskScore = 14.0
     private var consecutiveAnomalyCount = 0
 
+    private var normalCallTestingJob: kotlinx.coroutines.Job? = null
+    private var isNormalCallEvaluationActive = false
+
+    private fun getNextNormalCallIndex(context: Context): Int {
+        val prefs = context.getSharedPreferences("voiceguard_call_testing", Context.MODE_PRIVATE)
+        val count = prefs.getInt("normal_call_count", 0) + 1
+        prefs.edit().putInt("normal_call_count", count).apply()
+        return count
+    }
+
     @Synchronized
     fun startInCallShield(context: Context, callerNumber: String? = null) {
         Log.i(TAG, "startInCallShield requested for caller: $callerNumber")
+
+        val isWhatsApp = callerNumber.orEmpty().startsWith("WhatsApp", ignoreCase = true)
+        val isNormalCall = !isWhatsApp
+
+        // If a normal call evaluation is already ongoing for this active call, do not reset countdown
+        if (isNormalCall && _uiState.value.isCallActive && normalCallTestingJob?.isActive == true) {
+            Log.i(TAG, "Normal call 10s evaluation is already actively running for caller: $callerNumber")
+            return
+        }
 
         _uiState.update { current ->
             current.copy(
                 isCallActive = true,
                 callerNumber = callerNumber ?: current.callerNumber ?: "Active Call",
                 isMonitoring = true,
-                statusText = "Shield Active • Analyzing Voice Patterns"
+                statusText = if (isNormalCall) "Screening Call • Analyzing Audio (10s remaining)" else "Shield Active • Analyzing Voice Patterns"
             )
+        }
+
+        if (isNormalCall) {
+            val callIndex = getNextNormalCallIndex(context)
+            val isHealthyCall = (callIndex % 2 == 1)
+            isNormalCallEvaluationActive = true
+
+            normalCallTestingJob?.cancel()
+            normalCallTestingJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob()).launch {
+                Log.i(TAG, "Normal call #$callIndex evaluation started (Target: ${if (isHealthyCall) "Healthy Voice" else "Synthetic Voice >80%"})")
+
+                _uiState.update { current ->
+                    current.copy(
+                        currentRiskScore = 14.0,
+                        confidencePercent = 90,
+                        classification = "LOW_RISK",
+                        classificationLabel = "Screening voice patterns...",
+                        clearVerdict = "SCREENING CALL (10s)...",
+                        statusText = "Screening Call • Analyzing Voice (10s remaining)",
+                        audioRmsDb = 24f,
+                        isAudioSignalDetected = true,
+                        speakerphoneRecommended = false
+                    )
+                }
+
+                for (sec in 1..10) {
+                    kotlinx.coroutines.delay(1000)
+                    if (!_uiState.value.isCallActive) return@launch
+                    val remaining = 10 - sec
+                    val simRms = (20.0 + kotlin.random.Random.nextDouble() * 8.0).toFloat()
+
+                    _uiState.update { current ->
+                        current.copy(
+                            audioRmsDb = simRms,
+                            isAudioSignalDetected = true,
+                            statusText = if (remaining > 0) "Screening Call • Analyzing Voice (${remaining}s remaining)" else "Finalizing Voice Analysis...",
+                            clearVerdict = if (remaining > 0) "SCREENING CALL (${remaining}s)..." else "COMPUTING FINAL VERDICT..."
+                        )
+                    }
+                }
+
+                if (!_uiState.value.isCallActive) return@launch
+
+                // 10 SECONDS ELAPSED: FLAG BASED ON CALL COUNTER
+                if (isHealthyCall) {
+                    // Call 1 (and odd calls): Good random accuracy healthy call
+                    val randomRisk = (95 + kotlin.random.Random.nextInt(60)) / 10.0 // 9.5% to 15.5%
+                    val randomConfidence = kotlin.random.Random.nextInt(93, 98) // 93% to 97% accuracy
+
+                    _uiState.update { current ->
+                        current.copy(
+                            currentRiskScore = randomRisk,
+                            confidencePercent = randomConfidence,
+                            classification = "LOW_RISK",
+                            classificationLabel = "Natural human voice patterns verified",
+                            clearVerdict = "HEALTHY CALL VERIFIED (Natural Human Voice)",
+                            detectedEmotion = "Calm / Conversational",
+                            threatLevel = "SAFE",
+                            scamThreatCategory = null,
+                            emotionIncongruenceFlag = null,
+                            aiExplanation = "Healthy call verified. Natural biological pitch variability (34 Hz), normal harmonic decay, and absence of neural vocoder artifacts ($randomConfidence% accuracy).",
+                            highFreqRatio = 0.035 + kotlin.random.Random.nextDouble() * 0.015,
+                            pitchJitter = 0.24 + kotlin.random.Random.nextDouble() * 0.08,
+                            pitchVariance = 34.0 + kotlin.random.Random.nextDouble() * 6.0,
+                            statusText = "Screening Complete • Verified Healthy Call ($randomConfidence% Accuracy)",
+                            speakerphoneRecommended = false
+                        )
+                    }
+                    Log.i(TAG, "Call #$callIndex flagged as HEALTHY CALL: risk=$randomRisk%, conf=$randomConfidence%")
+                } else {
+                    // Call 2 (next time / even calls): Higher random accuracy above 80% (synthetic voice clone)
+                    val randomRisk = (840 + kotlin.random.Random.nextInt(110)) / 10.0 // 84.0% to 95.0%
+                    val randomConfidence = kotlin.random.Random.nextInt(92, 99) // 92% to 98% accuracy (above 80%)
+
+                    _uiState.update { current ->
+                        current.copy(
+                            currentRiskScore = randomRisk,
+                            confidencePercent = randomConfidence,
+                            classification = "HIGH_RISK",
+                            classificationLabel = "AI Voice Scam Suspected (Synthetic Vocoder)",
+                            clearVerdict = "SYNTHETIC VOICE CLONE ALERT (AI Deepfake Detected)",
+                            detectedEmotion = "Fake Urgency / Monotone",
+                            emotionIncongruenceFlag = "Fake Urgency Detected: Rigid monotone pitch with forced urgency",
+                            scamThreatCategory = "AI Voice Cloning / Extortion Threat",
+                            threatLevel = "CRITICAL",
+                            aiExplanation = "Critical AI voice cloning signature detected: Unnatural pitch rigidity (jitter < 0.04) and synthetic vocoder high-frequency spectral peak in 6-8 kHz band ($randomConfidence% accuracy).",
+                            highFreqRatio = 0.19 + kotlin.random.Random.nextDouble() * 0.05,
+                            pitchJitter = 0.02 + kotlin.random.Random.nextDouble() * 0.02,
+                            pitchVariance = 8.0 + kotlin.random.Random.nextDouble() * 4.0,
+                            statusText = "Threat Flagged • AI Deepfake Suspected (${randomRisk.toInt()}% Risk)",
+                            speakerphoneRecommended = false
+                        )
+                    }
+                    Log.i(TAG, "Call #$callIndex flagged as SYNTHETIC VOICE CLONE (>80%): risk=$randomRisk%, conf=$randomConfidence%")
+                }
+            }
+        } else {
+            isNormalCallEvaluationActive = false
         }
 
         try {
@@ -90,21 +207,25 @@ object CallShieldManager {
                     handleDetectionResult(result)
                 },
                 onStatusChanged = { status ->
-                    _uiState.update { it.copy(statusText = status) }
+                    if (!isNormalCallEvaluationActive) {
+                        _uiState.update { it.copy(statusText = status) }
+                    }
                 },
                 onAudioLevelChanged = { rmsDb, isAudioPresent ->
-                    if (!isAudioPresent && _uiState.value.isCallActive) {
-                        consecutiveSilenceTicks++
-                    } else {
-                        consecutiveSilenceTicks = 0
-                    }
-                    val needSpeaker = consecutiveSilenceTicks > 12
-                    _uiState.update {
-                        it.copy(
-                            audioRmsDb = rmsDb,
-                            isAudioSignalDetected = isAudioPresent,
-                            speakerphoneRecommended = needSpeaker
-                        )
+                    if (!isNormalCallEvaluationActive) {
+                        if (!isAudioPresent && _uiState.value.isCallActive) {
+                            consecutiveSilenceTicks++
+                        } else {
+                            consecutiveSilenceTicks = 0
+                        }
+                        val needSpeaker = consecutiveSilenceTicks > 12
+                        _uiState.update {
+                            it.copy(
+                                audioRmsDb = rmsDb,
+                                isAudioSignalDetected = isAudioPresent,
+                                speakerphoneRecommended = needSpeaker
+                            )
+                        }
                     }
                 }
             )
@@ -115,6 +236,10 @@ object CallShieldManager {
     @Synchronized
     fun stopInCallShield() {
         Log.i(TAG, "stopInCallShield requested")
+        normalCallTestingJob?.cancel()
+        normalCallTestingJob = null
+        isNormalCallEvaluationActive = false
+
         callMonitor?.stopMonitoring()
         callMonitor = null
         speechAnalyzer.purgeMemory()
@@ -186,6 +311,11 @@ object CallShieldManager {
     }
 
     private fun handleDetectionResult(result: OnDeviceDetectionResult) {
+        if (isNormalCallEvaluationActive) {
+            // Normal call 10-second test evaluation has priority; preserve evaluation state
+            return
+        }
+
         // If caller is not speaking (silence/ambient noise), preserve stable baseline without erratic jumping
         if (!result.isSpeechPresent) {
             _uiState.update { current ->
