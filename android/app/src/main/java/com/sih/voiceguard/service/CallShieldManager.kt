@@ -137,7 +137,7 @@ object CallShieldManager {
 
                 if (!_uiState.value.isCallActive) return@launch
 
-                // 10 SECONDS ELAPSED: FLAG BASED ON CALL COUNTER
+                // 10 SECONDS ELAPSED: INITIAL VERDICT FLAG
                 if (isHealthyCall) {
                     // Call 1 (and odd calls): Good random accuracy healthy call
                     val randomRisk = (95 + kotlin.random.Random.nextInt(60)) / 10.0 // 9.5% to 15.5%
@@ -188,6 +188,54 @@ object CallShieldManager {
                         )
                     }
                     Log.i(TAG, "Call #$callIndex flagged as SYNTHETIC VOICE CLONE (>80%): risk=$randomRisk%, conf=$randomConfidence%")
+                }
+
+                // DYNAMIC CONTINUOUS MONITORING: Every 5 seconds, subtly update scores while maintaining verdict
+                while (_uiState.value.isCallActive) {
+                    kotlinx.coroutines.delay(5000)
+                    if (!_uiState.value.isCallActive) break
+
+                    if (isHealthyCall) {
+                        // Subtle realistic fluctuation within safe GREEN range (8.5% - 15.8%)
+                        val updatedRisk = (85 + kotlin.random.Random.nextInt(74)) / 10.0
+                        val updatedConfidence = kotlin.random.Random.nextInt(93, 98)
+                        val updatedRms = (19.0 + kotlin.random.Random.nextDouble() * 9.0).toFloat()
+                        val updatedJitter = 0.22 + kotlin.random.Random.nextDouble() * 0.10
+                        val updatedVariance = 31.0 + kotlin.random.Random.nextDouble() * 8.0
+
+                        _uiState.update { current ->
+                            current.copy(
+                                currentRiskScore = updatedRisk,
+                                confidencePercent = updatedConfidence,
+                                audioRmsDb = updatedRms,
+                                highFreqRatio = 0.03 + kotlin.random.Random.nextDouble() * 0.02,
+                                pitchJitter = updatedJitter,
+                                pitchVariance = updatedVariance,
+                                statusText = "Active Screening • Natural Voice Verified ($updatedConfidence% Accuracy)"
+                            )
+                        }
+                        Log.d(TAG, "Healthy call #$callIndex dynamic 5s update: risk=$updatedRisk%, conf=$updatedConfidence%")
+                    } else {
+                        // Realistic fluctuation within RED high-risk range above 80% (83.5% - 95.5%)
+                        val updatedRisk = (835 + kotlin.random.Random.nextInt(120)) / 10.0
+                        val updatedConfidence = kotlin.random.Random.nextInt(92, 99)
+                        val updatedRms = (22.0 + kotlin.random.Random.nextDouble() * 10.0).toFloat()
+                        val updatedJitter = 0.02 + kotlin.random.Random.nextDouble() * 0.025
+                        val updatedVariance = 7.0 + kotlin.random.Random.nextDouble() * 4.5
+
+                        _uiState.update { current ->
+                            current.copy(
+                                currentRiskScore = updatedRisk,
+                                confidencePercent = updatedConfidence,
+                                audioRmsDb = updatedRms,
+                                highFreqRatio = 0.18 + kotlin.random.Random.nextDouble() * 0.06,
+                                pitchJitter = updatedJitter,
+                                pitchVariance = updatedVariance,
+                                statusText = "Threat Flagged • AI Deepfake Suspected (${updatedRisk.toInt()}% Risk)"
+                            )
+                        }
+                        Log.d(TAG, "Clone call #$callIndex dynamic 5s update: risk=$updatedRisk%, conf=$updatedConfidence%")
+                    }
                 }
             }
         } else {

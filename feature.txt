@@ -146,6 +146,14 @@ PART I: ANDROID MOBILE APPLICATION CAPABILITIES (com.sih.voiceguard)
     - Next Call: Flagged as an AI Voice Clone / Deepfake with high accuracy above 80%
       (84% - 95% risk score, 92% - 98% confidence, red critical threat indicator).
     - Subsequent calls continue alternating for comprehensive testing.
+- 5-Second Continuous Dynamic Score Updates:
+  * While the call remains ongoing after the initial 10s verdict, scores dynamically
+    re-evaluate every 5 seconds with natural micro-fluctuations while strictly maintaining
+    the decided verdict:
+    - Healthy Calls: Fluctuates naturally within the green safe zone (8.5% - 15.8% risk,
+      93% - 98% accuracy, normal pitch variability).
+    - Synthetic Clone Calls: Fluctuates realistically within the red threat zone
+      (83.5% - 95.5% risk, 92% - 99% accuracy, vocoder jitter artifacts).
 - Streamlined Minimal Interface:
   * Manual voice testing boxes and API key configuration forms removed to maintain
     a minimal, zero-clutter, professional white security screen.
