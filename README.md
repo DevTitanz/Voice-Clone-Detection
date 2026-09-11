@@ -7,9 +7,9 @@
 
 ## 📌 Executive Summary
 
-**VoxShield AI** is an enterprise-grade, privacy-first cybersecurity system engineered to detect and neutralize synthetic voice clones, AI-generated audio deepfakes, and telephone fraud in real time. 
+**VoxShield AI** is an enterprise-grade, privacy-first cybersecurity system engineered to detect and neutralize synthetic voice clones, AI-generated audio deepfakes, and telephone fraud in real time.
 
-With the rapid proliferation of zero-shot voice cloning technologies (ElevenLabs, VALL-E, HiFi-GAN, SpeechT5) and the surge in high-impact cyber extortion schemes—such as **"Digital Arrest" police impersonations, customs contraband scams, and emergency kidnapping fraud**—VoxShield AI delivers a proactive defensive perimeter.
+With the rapid proliferation of zero-shot voice cloning technologies (ElevenLabs, VALL-E, HiFi-GAN, SpeechT5) and the surge in high-impact cyber extortion schemes—such as **"Digital Arrest" police impersonations, customs contraband scams, and emergency kidnapping fraud**—VoxShield AI delivers an automated defensive perimeter.
 
 VoxShield operates across a **dual-surface deployment**:
 1. **Native Android Application (`com.sih.voxshield`)**: Intercepts incoming cellular and WhatsApp VoIP calls automatically, executing 100% on-device acoustic inference and offline multilingual scam intent detection with zero cloud audio transmission.
@@ -78,9 +78,9 @@ flowchart TD
 | **100% On-Device Offline Inference** | ✅ Zero Cloud Latency / Privacy Guard | N/A (Client-to-Gateway) | N/A |
 | **Full-Duplex Real-Time Audio Streaming**| ✅ Native Buffer | ✅ WebSocket (16-bit Linear PCM) | ✅ Asynchronous Sliding Ring Buffer |
 | **Synthetic AI Vocoder Simulator** | ✅ Hardware Mock Scenarios | ✅ Client-Side AudioContext Synthesizer | N/A |
-| **High-Frequency Vocoder Band (6–8 kHz)**| ✅ On-Device FFT | ✅ Real-Time Telemetry Card | ✅ Discrete STFT Ratio Analyzer |
-| **Spectral Flatness Biomarker** | ✅ Phase Noise Metric | ✅ Live Telemetry Card | ✅ Scipy Frequency Distribution |
-| **Pitch Jitter & Regularity Tracking** | ✅ Dynamic Jitter Factor | ✅ Telemetry Card | ✅ Autocorrelation Peak Jitter |
+| **High-Frequency Vocoder Band (6–8 kHz)**| ✅ On-Device FFT | ✅ Real-Time Telemetry Indicator | ✅ Discrete STFT Ratio Analyzer |
+| **Spectral Flatness Biomarker** | ✅ Phase Noise Metric | ✅ Live Telemetry Indicator | ✅ Scipy Frequency Distribution |
+| **Pitch Jitter & Regularity Tracking** | ✅ Dynamic Jitter Factor | ✅ Telemetry Indicator | ✅ Autocorrelation Peak Jitter |
 | **Prosodic Emotion Classification** | ✅ 6 States (Panic, Coercion, etc.) | ✅ Live Emotion Badge | ✅ Acoustic Energy + $F_0$ Variance |
 | **Synthetic "Fake Urgency" Flagging** | ✅ Monotone shouting detection | ✅ Incongruence Alert Banner | ✅ $\sigma_{F_0} < 16\text{ Hz}$ with high RMS |
 | **Multilingual Scam Intent Recognition** | ✅ Marathi, Hindi, English (Offline) | ✅ Scenario Corpora Simulator | N/A |
@@ -96,7 +96,7 @@ flowchart TD
 
 ## 🔬 Deepfake Forensic Pipeline & Detection Physics
 
-Synthetic speech engines and neural vocoders (HiFi-GAN, WaveNet, MelGAN, BigVGAN, ElevenLabs) leave identifiable mathematical and acoustic anomalies that human vocal cords cannot physically reproduce:
+Synthetic speech engines and neural vocoders (HiFi-GAN, WaveNet, MelGAN, BigVGAN, ElevenLabs) leave mathematical and acoustic signatures that biological human vocal cords do not produce:
 
 ### 1. High-Frequency Vocoder Band Energy Ratio (6 kHz – 8 kHz)
 - **Physics**: Human vocal tracts naturally attenuate acoustic energy at frequencies exceeding 6 kHz due to pharyngeal tissue absorption. Neural vocoders synthesizing waveforms via inverse Short-Time Fourier Transform (iSTFT) or GAN upsampling generators exhibit unnatural energy spillover and phase noise in the 6 kHz – 8 kHz band.
@@ -113,7 +113,7 @@ Synthetic speech engines and neural vocoders (HiFi-GAN, WaveNet, MelGAN, BigVGAN
   - **Jitter $> 0.85$**: Micro-phase glitches and audio splicing artifacts.
 
 ### 4. Prosodic Emotion Classification & "Fake Urgency" Incongruence
-Scammers utilizing cloned voices often attempt high-pressure coercion (e.g., screaming about an urgent arrest or accident). 
+Scammers utilizing cloned voices often attempt high-pressure coercion (e.g., screaming about an urgent arrest or accident).
 - VoxShield classifies vocal emotion into 6 acoustic states:
   1. **Panic / Extreme Urgency** (Elevated energy + $F_0 > 240\text{ Hz}$)
   2. **High Pressure / Coercion** (Aggressive volume + $F_0 > 200\text{ Hz}$)
@@ -164,14 +164,14 @@ Cloned voices are invariably paired with social engineering scripts. VoxShield f
 
 ## 🔒 Privacy by Design (Zero-Retention Guarantee)
 
-VoxShield AI was architected from inception to satisfy the **Digital Personal Data Protection (DPDP) Act 2023** and **GDPR**:
+VoxShield AI was architected to satisfy the **Digital Personal Data Protection (DPDP) Act 2023** and **GDPR**:
 
 1. **Volatile In-Memory Processing**: Incoming audio streams reside exclusively within an ephemeral sliding RAM buffer (`SlidingStreamBuffer` / short-lived byte arrays).
 2. **Zero Disk Storage**:
    - **0 bytes** of raw voice recordings are ever written to disk or flash storage.
    - **0 bytes** of audio waveforms are stored in databases (SQLite / PostgreSQL).
    - **0 bytes** cached in Android `SharedPreferences`.
-3. **Instant Session Purge**: The moment a call disconnects or the user clicks "End Call", the buffer's `purge()` method clears the memory array and triggers runtime garbage collection (`gc.collect()`).
+3. **Instant Session Purge**: The moment a call disconnects or the user ends the stream, the buffer clears the memory array and triggers runtime garbage collection (`gc.collect()`).
 4. **Minimal Auditable Telemetry**: The database strictly records anonymous session identifiers, timestamps, numerical risk scores, and client types (`web` / `android`). No caller audio, voice fingerprints, or transcription texts are retained.
 
 ---
@@ -214,7 +214,7 @@ Voice-Clone-Detection-main/
 │   │       ├── fad_cnn_service.py # PyTorch FAD-CNN Log-Mel model & smart explanations
 │   │       ├── stream_buffer.py   # Volatile RAM ring buffer for streaming chunks
 │   │       ├── audio_validator.py # Magic-byte binary verification & format security
-│   │       └── wav2vec_detector.py # Optional HuggingFace Wav2Vec2 transformer pipeline
+│   │       └── wav2vec_detector.py # HuggingFace Wav2Vec2 detector pipeline
 │   └── tests/
 │       ├── test_fad_cnn.py        # FAD-CNN & feature extractor unit test suite
 │       └── test_security.py       # End-to-end security, auth & rate limiting tests
@@ -225,26 +225,26 @@ Voice-Clone-Detection-main/
 │   ├── package.json               # Frontend dependencies & scripts
 │   └── src/
 │       ├── main.jsx               # React DOM bootstrap
-│       ├── App.jsx                # Application root, theme provider & navigation
-│       ├── App.css                # Global animations & component layout styles
-│       ├── index.css              # Design tokens, variables & glassmorphism system
+│       ├── App.jsx                # Application root, navigation & state
+│       ├── App.css                # Global styles
+│       ├── index.css              # Minimal design system tokens & layout
 │       └── components/
-│           ├── Navbar.jsx         # Header navigation bar & theme toggle
-│           ├── LiveCallStreamer.jsx # Real-time WebSocket streaming HUD & audio visualizer
-│           ├── FileAnalyzer.jsx   # Forensic file inspector with Log-Mel canvas heatmap
+│           ├── Navbar.jsx         # Clean header navigation bar
+│           ├── LiveCallStreamer.jsx # Real-time streaming & acoustic monitoring HUD
+│           ├── FileAnalyzer.jsx   # Forensic audio file inspector with Log-Mel canvas
 │           ├── MobileSimulator.jsx# Smartphone mockup with multilingual scam scenarios
 │           ├── CallHistory.jsx    # Non-PII audit trail table
 │           ├── AdminPanel.jsx     # Security admin dashboard & dynamic threshold sliders
 │           ├── StepUpModal.jsx    # Out-of-band caller verification challenge modal
-│           ├── PrivacyModal.jsx   # 5 Pillars of Privacy architecture explainer
+│           ├── PrivacyModal.jsx   # Data minimization & privacy architecture explainer
 │           ├── AuthModal.jsx      # JWT login & registration dialog
-│           └── Icons.jsx          # Clean, professional vector SVG icon system
+│           └── Icons.jsx          # Vector SVG icon system
 │
 └── android/                       # Native Android Mobile Application (Kotlin + Jetpack Compose)
     ├── build.gradle.kts           # Root Gradle build script
-    ├── settings.gradle.kts        # Project settings
+    ├── settings.gradle.kts        # Project settings (rootProject.name = "VoxShield")
     └── app/
-        ├── build.gradle.kts       # Android app dependencies (Compose, OkHttp, Coroutines)
+        ├── build.gradle.kts       # Android app dependencies (namespace = "com.sih.voxshield")
         └── src/main/
             ├── AndroidManifest.xml # Permissions (RECORD_AUDIO, SYSTEM_ALERT_WINDOW, etc.)
             └── java/com/sih/voxshield/
@@ -254,7 +254,7 @@ Voice-Clone-Detection-main/
                 │   ├── OnDeviceFeatureExtractor.kt # Android CPU acoustic feature extraction
                 │   ├── OnDeviceVoiceDetector.kt    # On-device risk classification engine
                 │   ├── OnDeviceSpeechAnalyzer.kt   # Keyword scanner & intent scoring
-                │   └── ExternalAiAudioService.kt   # Optional external AI diagnostic helper
+                │   └── ExternalAiAudioService.kt   # Diagnostic AI helper
                 ├── audio/
                 │   ├── OnDeviceCallMonitor.kt      # AudioRecord 16kHz PCM stream capture
                 │   ├── AudioStreamer.kt            # OkHttp WebSocket client for gateway mode
@@ -356,7 +356,7 @@ npm run dev
 
 #### 3. Android Mobile App Setup (Android Studio)
 1. Launch **Android Studio**.
-2. Select **Open** and select the `android` folder (`Voice-Clone-Detection-main/android`).
+2. Select **Open** and choose the `android` folder (`Voice-Clone-Detection-main/android`).
 3. Allow Gradle to synchronize dependencies (`build.gradle.kts`).
 4. Connect an Android device (Android 8.0 / API 26 through Android 14 / API 34) with **USB Debugging** enabled.
 5. In Android Studio, click **Run 'app'** (`Shift + F10`).
@@ -385,7 +385,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
 # Database Connection (SQLite default, or PostgreSQL for production)
 DATABASE_URL=sqlite+aiosqlite:///./voxshield.db
-# DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/voxshield_db
 
 # CORS Allowed Origins (Comma-separated)
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000
@@ -418,7 +417,7 @@ MAX_AUDIO_UPLOAD_MB=10
   Returns gateway health, active AI model version, and confirms the `ZERO_RETENTION_VOLATILE_MEMORY_ONLY` privacy guarantee.
 
 ### 2. Authentication (`/api/v1/auth`)
-- **`POST /api/v1/auth/register`**: Creates a new user. The first registered user automatically receives the `ADMIN` role.
+- **`POST /api/v1/auth/register`**: Creates a new user account. The first registered user automatically receives the `ADMIN` role.
 - **`POST /api/v1/auth/login`**: Authenticates user credentials and returns a signed JWT bearer token.
 - **`GET /api/v1/auth/me`**: Returns profile and role information for the authenticated user.
 
@@ -440,7 +439,7 @@ Full-duplex binary WebSocket for sub-second streaming audio screening.
   ws://localhost:8000/api/v1/ws/stream?token=<JWT_TOKEN>&client_type=web
   ```
 - **Client to Server**:
-  - Binary frames containing 16-bit linear PCM audio sampled at 16,000 Hz (e.g., 2048 samples / 128ms chunks).
+  - Binary frames containing 16-bit linear PCM audio sampled at 16,000 Hz (2048 samples / 128ms chunks).
   - JSON control messages: `{"action": "PING"}` or `{"action": "END_CALL"}`.
 - **Server to Client (`ANALYSIS_UPDATE`)**:
   ```json
@@ -469,7 +468,7 @@ Full-duplex binary WebSocket for sub-second streaming audio screening.
 
 ## 🧪 Testing & Verification
 
-The backend includes a comprehensive automated test suite testing the FAD-CNN model, DSP signal processing, and security/rate-limiting middlewares:
+The backend includes an automated test suite testing the FAD-CNN model, DSP signal processing, and security/rate-limiting middlewares:
 
 ```bash
 # Run test suite from root
@@ -485,7 +484,6 @@ pytest tests/ -v
   - Validates Log-Mel spectrogram output dimensions ($64 \times 128$).
   - Validates deep acoustic feature extraction (MFCCs, spectral centroid, spectral spread).
   - Tests end-to-end `predict_audio_buffer()` and blended risk scoring.
-  - Tests WER (Word Error Rate) evaluator and voice cloner abstractions.
 - `tests/test_security.py`:
   - Security header validation (`X-Content-Type-Options`, `X-Frame-Options`, `CSP`, `HSTS`).
   - XSS payload sanitization on registration.
