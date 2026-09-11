@@ -87,7 +87,7 @@ object FloatingShieldOverlay {
         }
 
         val tapHint = TextView(appContext).apply {
-            text = "Tap to open speech transcriber"
+            text = "Tap to open Call Shield"
             setTextColor(Color.parseColor("#94A3B8"))
             textSize = 8f
             setPadding(0, 2, 0, 0)

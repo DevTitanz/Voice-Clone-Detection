@@ -39,11 +39,14 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.sih.voiceguard.ai.ExternalAiAudioService
 import com.sih.voiceguard.ai.OnDeviceSpeechAnalyzer
 import com.sih.voiceguard.security.SecureStorage
 import com.sih.voiceguard.service.CallShieldManager
 import com.sih.voiceguard.service.WhatsAppCallListenerService
 import com.sih.voiceguard.ui.FloatingShieldOverlay
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 fun isNotificationAccessGranted(context: Context): Boolean {
     val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners") ?: ""
@@ -94,6 +97,7 @@ class MainActivity : ComponentActivity() {
                     OnDeviceCallScreen(
                         hasMicPermission = hasPermissions,
                         callerNumber = incomingCallerNumber.value,
+                        secureStorage = secureStorage,
                         onRequestMicPermission = {
                             requestPermissionLauncher.launch(
                                 arrayOf(
@@ -151,16 +155,21 @@ fun VoiceGuardTheme(content: @Composable () -> Unit) {
 fun OnDeviceCallScreen(
     hasMicPermission: Boolean,
     callerNumber: String? = null,
+    secureStorage: SecureStorage? = null,
     onRequestMicPermission: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val coroutineScope = rememberCoroutineScope()
     val shieldState by CallShieldManager.uiState.collectAsState()
     var showStepUpDialog by remember { mutableStateOf(false) }
     var customTestInput by remember { mutableStateOf("") }
     var hasNotificationAccess by remember { mutableStateOf(isNotificationAccessGranted(context)) }
     var hasOverlayPermission by remember { mutableStateOf(isOverlayGranted(context)) }
     var isSimulatedOverlayActive by remember { mutableStateOf(false) }
+
+    var apiKeyInput by remember { mutableStateOf(secureStorage?.getAiApiKey() ?: ExternalAiAudioService.DEFAULT_GEMINI_KEY) }
+    var apiKeySaveFeedback by remember { mutableStateOf<String?>(null) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -176,40 +185,23 @@ fun OnDeviceCallScreen(
     }
 
     val activeCaller = callerNumber ?: shieldState.callerNumber
+    var isDirectListeningActive by remember { mutableStateOf(false) }
 
-    // Android System Speech Recognizer Launcher for guaranteed 100% microphone reliability
-    val speechLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            if (!matches.isNullOrEmpty()) {
-                val recognized = matches[0]
-                CallShieldManager.processSpokenText(recognized)
-            }
-        }
-        // Resume background in-call acoustic monitoring
-        if (shieldState.isMonitoring || shieldState.isCallActive) {
-            CallShieldManager.startInCallShield(context, activeCaller)
-        }
-    }
-
-    val launchVoiceToText: () -> Unit = {
+    val launchDirectVoiceScan: () -> Unit = {
         if (!hasMicPermission) {
             onRequestMicPermission()
         } else {
-            try {
-                // Temporarily release the microphone so the Android speech engine has exclusive access
-                CallShieldManager.stopInCallShield()
-                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, shieldState.selectedLanguage.code)
-                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now in ${shieldState.selectedLanguage.displayName} (say 'give me money' or 'पैसे पाठवा')...")
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                }
-                speechLauncher.launch(intent)
-            } catch (e: Exception) {
-                // Ignore fallback
+            // Keep CallShield actively capturing audio
+            if (!shieldState.isMonitoring) {
+                CallShieldManager.startInCallShield(context, activeCaller)
+            }
+            isDirectListeningActive = true
+            coroutineScope.launch {
+                // Buffer 2.5 seconds of live call/mic speech directly
+                kotlinx.coroutines.delay(2500)
+                isDirectListeningActive = false
+                // Transcribe and analyze directly via multimodal AI without any Google dialogs
+                CallShieldManager.runExternalAiScan(apiKeyInput, coroutineScope)
             }
         }
     }
@@ -571,17 +563,18 @@ fun OnDeviceCallScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (shieldState.currentRiskScore >= 70) "AI Voice Scam Suspected" else "Caller Verified Safe",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = if (shieldState.currentRiskScore >= 70) Color(0xFFDC2626) else Color(0xFF059669)
+                    text = shieldState.clearVerdict,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Black,
+                    color = if (shieldState.currentRiskScore >= 70) Color(0xFFDC2626) else (if (shieldState.currentRiskScore >= 40) Color(0xFFD97706) else Color(0xFF059669)),
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = if (shieldState.currentRiskScore >= 70) "Do not send funds or share OTP" else shieldState.classificationLabel,
-                    fontSize = 12.sp,
+                    text = "Confidence: ${shieldState.confidencePercent}% • ${if (shieldState.currentRiskScore >= 70) "Review caller identity before acting" else "Biological human speech prosody"}",
+                    fontSize = 11.sp,
                     color = Color(0xFF64748B),
                     textAlign = TextAlign.Center
                 )
@@ -596,7 +589,7 @@ fun OnDeviceCallScreen(
                         .background(Color.White)
                         .border(
                             width = 4.dp,
-                            color = if (shieldState.currentRiskScore >= 70) Color(0xFFEF4444) else Color(0xFF10B981),
+                            color = if (shieldState.currentRiskScore >= 70) Color(0xFFEF4444) else (if (shieldState.currentRiskScore >= 40) Color(0xFFF59E0B) else Color(0xFF10B981)),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -606,7 +599,7 @@ fun OnDeviceCallScreen(
                             text = "${shieldState.currentRiskScore.toInt()}%",
                             fontSize = 38.sp,
                             fontWeight = FontWeight.Black,
-                            color = if (shieldState.currentRiskScore >= 70) Color(0xFFEF4444) else Color(0xFF10B981)
+                            color = if (shieldState.currentRiskScore >= 70) Color(0xFFEF4444) else (if (shieldState.currentRiskScore >= 40) Color(0xFFF59E0B) else Color(0xFF10B981))
                         )
                         Text(
                             text = "AI RISK",
@@ -642,6 +635,52 @@ fun OnDeviceCallScreen(
                     )
                 }
 
+                // Dedicated External Cloud AI Forensic Result Card
+                if (shieldState.externalAiVerdict != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFEFF6FF),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF3B82F6)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = shieldState.externalAiProvider ?: "Cloud AI Forensic Scan",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1D4ED8)
+                                )
+                                Text(
+                                    text = "VERIFIED AI",
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF2563EB)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = shieldState.externalAiVerdict ?: "",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A)
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = shieldState.externalAiExplanation ?: "",
+                                fontSize = 11.sp,
+                                color = Color(0xFF334155),
+                                lineHeight = 15.sp
+                            )
+                        }
+                    }
+                }
+
                 // AI Deep Analysis Explanation
                 if (shieldState.currentRiskScore >= 70 || shieldState.scamThreatCategory != null) {
                     Spacer(modifier = Modifier.height(10.dp))
@@ -653,7 +692,7 @@ fun OnDeviceCallScreen(
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
                             Text(
-                                text = "AI Risk Analysis:",
+                                text = "Threat Intelligence Analysis:",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF991B1B)
@@ -676,6 +715,131 @@ fun OnDeviceCallScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Verify Caller with OTP", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 3.5 External Cloud AI Engine Card (Gemini / Groq / OpenAI API Key)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                if (apiKeyInput.isNotBlank()) Color(0xFF93C5FD) else Color(0xFFE2E8F0)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.VpnKey,
+                            contentDescription = null,
+                            tint = Color(0xFF2563EB),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Cloud AI Forensic Key",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (apiKeyInput.isNotBlank()) Color(0xFFDCFCE7) else Color(0xFFF1F5F9)
+                    ) {
+                        Text(
+                            text = if (apiKeyInput.isNotBlank()) "CONFIGURED" else "OPTIONAL",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (apiKeyInput.isNotBlank()) Color(0xFF166534) else Color(0xFF64748B),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = "Add a Google Gemini (AIzaSy...), Groq (gsk_...), or OpenAI key for cloud audio forensics during active calls.",
+                    fontSize = 11.sp,
+                    color = Color(0xFF64748B),
+                    lineHeight = 15.sp
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = apiKeyInput,
+                        onValueChange = { apiKeyInput = it },
+                        placeholder = { Text("Paste Gemini or Groq API Key...", fontSize = 11.sp) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(46.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Button(
+                        onClick = {
+                            secureStorage?.saveAiApiKey(apiKeyInput)
+                            apiKeySaveFeedback = "Saved!"
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                        modifier = Modifier.height(44.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Text(apiKeySaveFeedback ?: "Save", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                // Cloud AI Trigger Button during call
+                if (apiKeyInput.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            CallShieldManager.runExternalAiScan(apiKeyInput, coroutineScope)
+                        },
+                        enabled = !shieldState.isExternalAiRunning,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                    ) {
+                        if (shieldState.isExternalAiRunning) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Analyzing via Cloud AI...", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        } else {
+                            Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Run Deep Cloud AI Forensic Scan", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -719,7 +883,7 @@ fun OnDeviceCallScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "On-Screen Voice to Text",
+                            text = "Direct In-App Voice Scanner",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF0F172A)
@@ -766,7 +930,7 @@ fun OnDeviceCallScreen(
                                 letterSpacing = 0.5.sp
                             )
                             Text(
-                                text = "RAM ONLY • 0 DISK STORAGE",
+                                text = "RAM ONLY • ZERO POPUPS",
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF10B981)
@@ -776,10 +940,15 @@ fun OnDeviceCallScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = if (shieldState.liveTranscript.isNotEmpty()) "\"${shieldState.liveTranscript}\"" else "Tap 'Tap to Speak' below and speak into your phone (e.g. 'give me money' or 'पैसे पाठवा') to see your speech transcribe here on screen in real time.",
+                            text = when {
+                                shieldState.liveTranscript.isNotEmpty() -> "\"${shieldState.liveTranscript}\""
+                                isDirectListeningActive -> "Listening directly through microphone in ${shieldState.selectedLanguage.displayName}... Speak naturally now."
+                                shieldState.isExternalAiRunning -> "Transcribing speech and running deepfake forensic inspection directly..."
+                                else -> "Tap 'Scan Live Voice Directly' below to speak and detect synthetic voice clones seamlessly without any Google dialogs or popups."
+                            },
                             fontSize = 14.sp,
                             fontWeight = if (shieldState.liveTranscript.isNotEmpty()) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (shieldState.liveTranscript.isNotEmpty()) (if (shieldState.scamThreatCategory != null) Color(0xFF991B1B) else Color(0xFF0F172A)) else Color(0xFF94A3B8),
+                            color = if (shieldState.liveTranscript.isNotEmpty()) (if (shieldState.scamThreatCategory != null) Color(0xFF991B1B) else Color(0xFF0F172A)) else (if (isDirectListeningActive) Color(0xFF2563EB) else Color(0xFF94A3B8)),
                             lineHeight = 20.sp
                         )
 
@@ -804,9 +973,10 @@ fun OnDeviceCallScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Primary Action Button: Tap to Speak (Voice to Text)
+                // Primary Action Button: Direct In-App Voice Scan (No Google Popup)
                 Button(
-                    onClick = { launchVoiceToText() },
+                    onClick = { launchDirectVoiceScan() },
+                    enabled = !isDirectListeningActive && !shieldState.isExternalAiRunning,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
@@ -815,17 +985,31 @@ fun OnDeviceCallScreen(
                         containerColor = if (shieldState.scamThreatCategory != null) Color(0xFFDC2626) else Color(0xFF2563EB)
                     )
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Tap to Speak (Voice to Text)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (isDirectListeningActive || shieldState.isExternalAiRunning) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isDirectListeningActive) "Listening to Voice..." else "Analyzing Directly...",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Scan Live Voice Directly (No Popups)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))

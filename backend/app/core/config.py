@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # A safe default for development; in production, validated to require at least 32 characters
     JWT_SECRET: str = "voiceguard_dev_secret_key_minimum_32_chars_long_abcdef123456789"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours for development & testing
 
     # Database: Supports PostgreSQL (postgresql+asyncpg://...) or SQLite fallback for testing
     DATABASE_URL: str = "sqlite+aiosqlite:///./voiceguard.db"

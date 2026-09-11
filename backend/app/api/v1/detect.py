@@ -1,5 +1,6 @@
+import os
 import uuid
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
@@ -11,11 +12,16 @@ from app.db.schemas import (
     DetectionResult,
     SessionHistoryItem,
     StepUpVerificationRequest,
-    StepUpVerificationResponse
+    StepUpVerificationResponse,
+    FADCNNDetectionResponse,
+    VoiceCloneRequest,
+    WEREvaluationResponse
 )
 from app.api.deps import get_current_user
 from app.services.audio_validator import validate_audio_content
 from app.services.detector import detector_service
+from app.services.wav2vec_detector import compare, eval_service, detect_deepfake
+from app.services.fad_cnn_service import fad_cnn_service, voice_cloner, wer_evaluator
 
 router = APIRouter(prefix="/detect", tags=["Voice Deepfake Detection"])
 
@@ -33,6 +39,7 @@ async def upload_audio_for_analysis(
     1. Enforces strict file size & magic-bytes MIME validation.
     2. Zero Audio Persistence: audio resides in memory only during analysis and is instantly purged.
     3. Calculates probabilistic synthetic-voice risk score and logs auditable session metadata.
+    4. Evaluates Deep Learning FAD-CNN Mel-Spectrogram biomarker model.
     """
     # Read file content safely in chunks
     file_bytes = await file.read()
@@ -94,7 +101,13 @@ async def upload_audio_for_analysis(
         audio_duration_seconds=analysis["audio_duration_seconds"],
         model_version=analysis["model_version"],
         analysis_timestamp=analysis["analysis_timestamp"],
-        features_summary=analysis.get("features_summary")
+        features_summary=analysis.get("features_summary"),
+        fad_cnn_prediction=analysis.get("fad_cnn_prediction"),
+        fad_cnn_prob=analysis.get("fad_cnn_prob"),
+        mel_spectrogram=analysis.get("mel_spectrogram"),
+        waveform_preview=analysis.get("waveform_preview"),
+        smart_explanation=analysis.get("smart_explanation"),
+        acoustic_traits=analysis.get("acoustic_traits")
     )
 
 
@@ -208,3 +221,114 @@ async def submit_stepup_verification(
         details=verification.details,
         created_at=verification.created_at
     )
+
+
+@router.post("/compare")
+async def compare_speakers_and_detect_deepfake(
+    audio_file_1: UploadFile = File(...),
+    audio_file_2: UploadFile = File(...)
+):
+    """
+    Parallel Speaker Verification & Wav2Vec2 Deepfake Detection.
+    Detects voice cloning attacks: High voice similarity + High synthetic deepfake score.
+    """
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f1, \
+         tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f2:
+        f1.write(await audio_file_1.read())
+        f2.write(await audio_file_2.read())
+        path1, path2 = f1.name, f2.name
+
+    try:
+        result = await compare(path1, path2)
+        return result
+    finally:
+        for p in (path1, path2):
+            if os.path.exists(p):
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
+
+
+@router.post("/evaluate")
+async def evaluate_audio_quality_and_asr(
+    audio_file: UploadFile = File(...),
+    ground_truth: Optional[str] = None
+):
+    """
+    Evaluates audio quality and ASR accuracy using fi.evals
+    (AudioQualityEvaluator & ASRAccuracy)
+    """
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        f.write(await audio_file.read())
+        path = f.name
+
+    try:
+        result = eval_service.evaluate(path, ground_truth=ground_truth)
+        return result
+    finally:
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+
+
+@router.post("/fad-cnn", response_model=FADCNNDetectionResponse)
+async def detect_with_fad_cnn(file: UploadFile = File(...)):
+    """
+    Direct FAD-CNN Mel-Spectrogram Inference Endpoint.
+    Matches the app.py /predict endpoint from pk9444/2xqcTCqAYvy0SJbK:
+    Returns 64x128 Mel-spectrogram, normalized waveform, deep acoustic features,
+    and smart AI diagnostic explanation.
+    """
+    file_bytes = await file.read()
+    validate_audio_content(file_bytes, file.filename or "audio.wav")
+
+    try:
+        samples, sample_rate = detector_service.parse_wav_bytes(file_bytes)
+    except Exception:
+        samples = detector_service.parse_pcm16_chunk(file_bytes)
+        sample_rate = 16000
+    finally:
+        del file_bytes
+
+    pred = fad_cnn_service.predict_audio_buffer(samples, sample_rate)
+
+    return FADCNNDetectionResponse(
+        filename=file.filename or "audio.wav",
+        label=pred["label"],
+        prob=pred["fake_probability"],
+        confidence=pred["confidence"],
+        mel_data=pred["mel_spectrogram"],
+        waveform=pred["waveform_preview"],
+        acoustic_features=pred["acoustic_features"],
+        explanation=pred["smart_explanation"],
+        model_type=pred["model_type"]
+    )
+
+
+@router.post("/clone-voice")
+async def request_voice_clone(request: VoiceCloneRequest):
+    """
+    VCFAD Phase 1 SpeechT5 Voice Cloning Synthesis Endpoint.
+    Generates synthetic voice clone audio blueprint based on text and speaker embedding.
+    """
+    result = voice_cloner.clone_voice(
+        text=request.text,
+        speaker_embedding=request.speaker_embedding
+    )
+    return result
+
+
+@router.post("/evaluate-wer", response_model=WEREvaluationResponse)
+async def evaluate_wer_metrics(real_text: str, fake_text: str):
+    """
+    Voice Cloning Evaluation Metrics: Calculates Relative Word Error Rate (WER)
+    between genuine transcript and synthetic clone transcript (evaluate_vc_metrics.py).
+    """
+    result = wer_evaluator.evaluate_relative_wer(real_text, fake_text)
+    return WEREvaluationResponse(**result)
+

@@ -33,7 +33,20 @@ class SecureStorage(context: Context) {
         prefs.edit().remove(KEY_AUTH_TOKEN).apply()
     }
 
+    fun saveAiApiKey(apiKey: String) {
+        prefs.edit().putString(KEY_AI_API_KEY, apiKey.trim()).apply()
+    }
+
+    fun getAiApiKey(): String? {
+        return prefs.getString(KEY_AI_API_KEY, null)
+    }
+
+    fun clearAiApiKey() {
+        prefs.edit().remove(KEY_AI_API_KEY).apply()
+    }
+
     companion object {
         private const val KEY_AUTH_TOKEN = "jwt_access_token"
+        private const val KEY_AI_API_KEY = "external_ai_api_key"
     }
 }

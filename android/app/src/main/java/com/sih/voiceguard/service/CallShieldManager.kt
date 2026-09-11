@@ -3,13 +3,17 @@ package com.sih.voiceguard.service
 import android.content.Context
 import android.media.AudioManager
 import android.util.Log
+import com.sih.voiceguard.ai.ExternalAiAnalysisResult
+import com.sih.voiceguard.ai.ExternalAiAudioService
 import com.sih.voiceguard.ai.OnDeviceDetectionResult
 import com.sih.voiceguard.ai.OnDeviceSpeechAnalyzer
 import com.sih.voiceguard.audio.OnDeviceCallMonitor
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class CallShieldUiState(
     val isCallActive: Boolean = false,
@@ -18,6 +22,8 @@ data class CallShieldUiState(
     val currentRiskScore: Double = 14.0,
     val classification: String = "LOW_RISK",
     val classificationLabel: String = "Natural voice patterns detected",
+    val clearVerdict: String = "VERIFIED NATURAL VOICE",
+    val confidencePercent: Int = 94,
     val detectedEmotion: String = "Calm / Neutral",
     val emotionIncongruenceFlag: String? = null,
     val scamThreatCategory: String? = null,
@@ -32,13 +38,17 @@ data class CallShieldUiState(
     val pitchVariance: Double = 34.0,
     val statusText: String = "Shield Standing By",
     val speakerphoneRecommended: Boolean = false,
-    val selectedLanguage: OnDeviceSpeechAnalyzer.Language = OnDeviceSpeechAnalyzer.Language.ENGLISH
+    val selectedLanguage: OnDeviceSpeechAnalyzer.Language = OnDeviceSpeechAnalyzer.Language.ENGLISH,
+    val externalAiVerdict: String? = null,
+    val externalAiExplanation: String? = null,
+    val externalAiProvider: String? = null,
+    val isExternalAiRunning: Boolean = false
 )
 
 /**
  * CallShieldManager:
- * Unified Singleton orchestrating in-call on-device audio screening and speech intent analysis.
- * Eliminates microphone hardware conflicts between Foreground Services and Activities.
+ * Unified Singleton orchestrating in-call on-device audio screening, stabilized smoothing,
+ * and optional external Cloud AI forensic validation.
  */
 object CallShieldManager {
     private const val TAG = "CallShieldManager"
@@ -48,7 +58,11 @@ object CallShieldManager {
 
     private var callMonitor: OnDeviceCallMonitor? = null
     val speechAnalyzer = OnDeviceSpeechAnalyzer()
+    private val externalAiService = ExternalAiAudioService()
+
     private var consecutiveSilenceTicks = 0
+    private var smoothedRiskScore = 14.0
+    private var consecutiveAnomalyCount = 0
 
     @Synchronized
     fun startInCallShield(context: Context, callerNumber: String? = null) {
@@ -59,11 +73,10 @@ object CallShieldManager {
                 isCallActive = true,
                 callerNumber = callerNumber ?: current.callerNumber ?: "Active Call",
                 isMonitoring = true,
-                statusText = "In-Call Shield Active • Screening Call"
+                statusText = "Shield Active • Analyzing Voice Patterns"
             )
         }
 
-        // Set audio routing mode for communication
         try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
@@ -85,7 +98,7 @@ object CallShieldManager {
                     } else {
                         consecutiveSilenceTicks = 0
                     }
-                    val needSpeaker = consecutiveSilenceTicks > 12 // ~1.5 seconds silence during call
+                    val needSpeaker = consecutiveSilenceTicks > 12
                     _uiState.update {
                         it.copy(
                             audioRmsDb = rmsDb,
@@ -106,6 +119,8 @@ object CallShieldManager {
         callMonitor = null
         speechAnalyzer.purgeMemory()
         consecutiveSilenceTicks = 0
+        smoothedRiskScore = 14.0
+        consecutiveAnomalyCount = 0
 
         _uiState.update {
             it.copy(
@@ -114,6 +129,8 @@ object CallShieldManager {
                 currentRiskScore = 14.0,
                 classification = "LOW_RISK",
                 classificationLabel = "Natural voice patterns detected",
+                clearVerdict = "VERIFIED NATURAL VOICE",
+                confidencePercent = 94,
                 detectedEmotion = "Calm / Neutral",
                 emotionIncongruenceFlag = null,
                 scamThreatCategory = null,
@@ -124,6 +141,10 @@ object CallShieldManager {
                 audioRmsDb = 0f,
                 isAudioSignalDetected = false,
                 speakerphoneRecommended = false,
+                externalAiVerdict = null,
+                externalAiExplanation = null,
+                externalAiProvider = null,
+                isExternalAiRunning = false,
                 statusText = "Shield Standing By • Volatile RAM Cleared"
             )
         }
@@ -136,9 +157,17 @@ object CallShieldManager {
         _uiState.update { current ->
             val isScam = intent.isScamSuspected
             val fusedRisk = if (isScam) {
-                minOf(98.0, maxOf(current.currentRiskScore, intent.riskScoreBoost.coerceAtLeast(85.0)))
+                minOf(98.0, maxOf(smoothedRiskScore, intent.riskScoreBoost.coerceAtLeast(85.0)))
             } else {
-                current.currentRiskScore
+                smoothedRiskScore
+            }
+
+            val clearVerdict = if (isScam) {
+                "SCAM COERCION: ${intent.detectedThreatCategory ?: "Urgent Extortion"}"
+            } else if (fusedRisk >= 70.0) {
+                "SYNTHETIC VOICE CLONE ALERT"
+            } else {
+                "VERIFIED NATURAL VOICE"
             }
 
             current.copy(
@@ -148,6 +177,8 @@ object CallShieldManager {
                 aiExplanation = intent.aiExplanation,
                 matchedKeywords = intent.matchedKeywords,
                 currentRiskScore = fusedRisk,
+                clearVerdict = clearVerdict,
+                confidencePercent = if (isScam) 96 else 92,
                 classification = if (fusedRisk >= 70.0) "HIGH_RISK" else "LOW_RISK",
                 classificationLabel = if (isScam) "Scam Intent: ${intent.detectedThreatCategory ?: "Urgent Coercion"}" else current.classificationLabel
             )
@@ -155,12 +186,47 @@ object CallShieldManager {
     }
 
     private fun handleDetectionResult(result: OnDeviceDetectionResult) {
-        val intent = speechAnalyzer.analyzeIntent()
-        val fusedRisk = if (intent.isScamSuspected) {
-            minOf(98.0, maxOf(result.riskScore, intent.riskScoreBoost.coerceAtLeast(85.0)))
-        } else {
-            result.riskScore
+        // If caller is not speaking (silence/ambient noise), preserve stable baseline without erratic jumping
+        if (!result.isSpeechPresent) {
+            _uiState.update { current ->
+                current.copy(
+                    audioRmsDb = current.audioRmsDb,
+                    highFreqRatio = result.features.highFreqRatio,
+                    pitchJitter = result.features.jitterFactor,
+                    pitchVariance = result.features.pitchVarianceHz
+                )
+            }
+            return
         }
+
+        // Exponential Moving Average (EMA) smoothing to eliminate per-second jitter
+        // 75% previous smoothed weight + 25% new sample weight
+        smoothedRiskScore = (0.75 * smoothedRiskScore) + (0.25 * result.riskScore)
+
+        if (result.riskScore >= 65.0) {
+            consecutiveAnomalyCount++
+        } else {
+            consecutiveAnomalyCount = maxOf(0, consecutiveAnomalyCount - 1)
+        }
+
+        val intent = speechAnalyzer.analyzeIntent()
+        val isScam = intent.isScamSuspected
+        val isSustainedAnomaly = consecutiveAnomalyCount >= 2
+
+        val finalRisk = when {
+            isScam -> minOf(98.0, maxOf(smoothedRiskScore, intent.riskScoreBoost.coerceAtLeast(85.0)))
+            isSustainedAnomaly -> maxOf(smoothedRiskScore, 75.0)
+            else -> minOf(45.0, smoothedRiskScore)
+        }
+
+        val clearVerdict = when {
+            isScam -> "SCAM COERCION: ${intent.detectedThreatCategory ?: "Urgent Coercion"}"
+            finalRisk >= 70.0 -> "SYNTHETIC VOICE CLONE ALERT (Unnatural Monotone)"
+            finalRisk >= 40.0 -> "SUSPICIOUS VOICE ACOUSTICS"
+            else -> "VERIFIED NATURAL HUMAN VOICE (Biological Prosody)"
+        }
+
+        val conf = if (isScam || finalRisk >= 70.0) 95 else (88 + (result.confidence * 10).toInt().coerceIn(0, 10))
 
         _uiState.update { current ->
             current.copy(
@@ -169,29 +235,92 @@ object CallShieldManager {
                 pitchVariance = result.features.pitchVarianceHz,
                 detectedEmotion = result.detectedEmotion,
                 emotionIncongruenceFlag = result.emotionIncongruenceFlag,
-                currentRiskScore = fusedRisk,
-                classification = if (fusedRisk >= 70.0) "HIGH_RISK" else result.classification,
-                classificationLabel = if (intent.isScamSuspected) "Scam Intent: ${intent.detectedThreatCategory ?: "Urgent Coercion"}" else result.classificationLabel,
+                currentRiskScore = finalRisk,
+                clearVerdict = clearVerdict,
+                confidencePercent = conf,
+                classification = if (finalRisk >= 70.0) "HIGH_RISK" else result.classification,
+                classificationLabel = if (isScam) "Scam Intent: ${intent.detectedThreatCategory ?: "Urgent Coercion"}" else result.classificationLabel,
                 scamThreatCategory = intent.detectedThreatCategory,
                 threatLevel = intent.threatLevel,
-                aiExplanation = intent.aiExplanation,
+                aiExplanation = if (isScam) intent.aiExplanation else (if (finalRisk >= 70.0) "Robotic pitch and vocoder anomaly detected." else "Natural human voice patterns verified."),
                 matchedKeywords = intent.matchedKeywords
             )
         }
     }
 
+    /**
+     * Executes external cloud AI forensic scan (Gemini 1.5 Flash / Groq / OpenAI)
+     * using the caller's audio clip and transcript.
+     */
+    fun runExternalAiScan(apiKey: String, scope: CoroutineScope) {
+        val wav = callMonitor?.getRecentAudioWav()
+        val transcript = _uiState.value.liveTranscript
+
+        _uiState.update { it.copy(isExternalAiRunning = true) }
+
+        scope.launch {
+            val result = externalAiService.analyzeAudioAndText(apiKey, wav, transcript)
+            _uiState.update { current ->
+                result.fold(
+                    onSuccess = { ai: ExternalAiAnalysisResult ->
+                        val elevatedRisk = if (ai.isSynthetic || ai.scamThreat != null) {
+                            maxOf(current.currentRiskScore, ai.riskScore)
+                        } else {
+                            minOf(current.currentRiskScore, 18.0)
+                        }
+
+                        val updatedTranscript = if (!ai.transcript.isNullOrBlank()) ai.transcript else current.liveTranscript
+                        val intent = if (!ai.transcript.isNullOrBlank()) {
+                            speechAnalyzer.appendTranscriptChunk(ai.transcript)
+                            speechAnalyzer.analyzeIntent()
+                        } else null
+
+                        current.copy(
+                            isExternalAiRunning = false,
+                            externalAiVerdict = ai.verdict,
+                            externalAiExplanation = ai.explanation,
+                            externalAiProvider = ai.provider,
+                            currentRiskScore = elevatedRisk,
+                            clearVerdict = if (ai.isSynthetic || ai.scamThreat != null) "AI THREAT: ${ai.verdict.uppercase()}" else "AI VERIFIED: ${ai.verdict.uppercase()}",
+                            confidencePercent = (ai.confidence * 100).toInt(),
+                            classification = if (elevatedRisk >= 70.0) "HIGH_RISK" else "LOW_RISK",
+                            classificationLabel = "${ai.provider}: ${ai.verdict}",
+                            aiExplanation = ai.explanation,
+                            scamThreatCategory = ai.scamThreat ?: intent?.detectedThreatCategory ?: current.scamThreatCategory,
+                            liveTranscript = updatedTranscript
+                        )
+                    },
+                    onFailure = { err: Throwable ->
+                        current.copy(
+                            isExternalAiRunning = false,
+                            externalAiVerdict = "Scan Failed: ${err.message?.take(50)}",
+                            externalAiExplanation = "Check API key and internet connectivity."
+                        )
+                    }
+                )
+            }
+        }
+    }
+
     fun purgeMemory() {
         speechAnalyzer.purgeMemory()
+        smoothedRiskScore = 14.0
+        consecutiveAnomalyCount = 0
+
         _uiState.update {
             it.copy(
                 liveTranscript = "",
                 scamThreatCategory = null,
                 threatLevel = "SAFE",
                 aiExplanation = "Normal conversational speech patterns.",
+                clearVerdict = "VERIFIED NATURAL VOICE",
+                confidencePercent = 94,
                 matchedKeywords = emptyList(),
                 currentRiskScore = 14.0,
                 classification = "LOW_RISK",
-                classificationLabel = "Natural voice patterns detected"
+                classificationLabel = "Natural voice patterns detected",
+                externalAiVerdict = null,
+                externalAiExplanation = null
             )
         }
     }

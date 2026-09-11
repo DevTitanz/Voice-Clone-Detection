@@ -10,7 +10,8 @@ data class OnDeviceDetectionResult(
     val verificationRequired: Boolean,
     val features: OnDeviceFeatureExtractor.AcousticFeatures,
     val detectedEmotion: String,
-    val emotionIncongruenceFlag: String? = null
+    val emotionIncongruenceFlag: String? = null,
+    val isSpeechPresent: Boolean = true
 )
 
 /**
@@ -21,10 +22,25 @@ data class OnDeviceDetectionResult(
 class OnDeviceVoiceDetector {
 
     private val extractor = OnDeviceFeatureExtractor()
-    val modelVersion = "voiceguard-ondevice-v1.3-emotion"
+    val modelVersion = "voiceguard-ondevice-v1.4-stabilized"
 
     fun analyzeBuffer(samples: FloatArray, sampleRate: Int = 16000): OnDeviceDetectionResult {
         val features = extractor.extract(samples, sampleRate)
+
+        // Noise floor gate: If energy is too low, caller is not speaking (silence or ambient room tone)
+        if (features.energyRms < 0.025f) {
+            return OnDeviceDetectionResult(
+                riskScore = 14.0,
+                classification = "LOW_RISK",
+                classificationLabel = "Natural voice baseline",
+                confidence = 0.88,
+                verificationRequired = false,
+                features = features,
+                detectedEmotion = "Listening...",
+                emotionIncongruenceFlag = null,
+                isSpeechPresent = false
+            )
+        }
 
         // 1. Vocoder high frequency ratio (neural vocoders often introduce high-frequency band anomaly)
         val hfScore = min(35.0, features.highFreqRatio * 280.0)
@@ -53,7 +69,7 @@ class OnDeviceVoiceDetector {
             energy > 0.08 && f0 > 200.0 -> "High Pressure / Coercion"
             energy > 0.08 && pVar > 40.0 -> "Agitated / Distressed"
             pVar < 14.0 && energy > 0.05 -> "Monotone / Flat Affect"
-            energy < 0.02 -> "Whisper / Low Energy"
+            energy < 0.03 -> "Whisper / Low Energy"
             else -> "Calm / Neutral"
         }
 

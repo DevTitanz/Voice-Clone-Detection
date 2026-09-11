@@ -123,8 +123,8 @@ class OnDeviceCallMonitor(
                             }
                         }
 
-                        // Run on-device inference every ~250ms (every 4 chunks)
-                        if (tick % 4 == 0 && totalSamplesRecorded >= 8000) {
+                        // Run on-device inference every ~1 second (every 16 chunks)
+                        if (tick % 16 == 0 && totalSamplesRecorded >= 12000) {
                             val snapshot = FloatArray(windowSize)
                             for (i in 0 until windowSize) {
                                 snapshot[i] = slidingBuffer[(writePos + i) % windowSize]
@@ -144,6 +144,19 @@ class OnDeviceCallMonitor(
             onStatusChanged("Call monitor error: ${e.message}")
             stopMonitoring()
         }
+    }
+
+    /**
+     * Extracts the most recent 2-second audio slice from the volatile circular buffer
+     * and encodes it as a standard 16kHz mono WAV for external AI analysis.
+     */
+    fun getRecentAudioWav(): ByteArray? {
+        if (!isRunning.get() || totalSamplesRecorded < 8000) return null
+        val snapshot = FloatArray(windowSize)
+        for (i in 0 until windowSize) {
+            snapshot[i] = slidingBuffer[(writePos + i) % windowSize]
+        }
+        return WavHelper.floatsToWavBytes(snapshot, sampleRate)
     }
 
     fun stopMonitoring() {

@@ -90,26 +90,14 @@ class WhatsAppCallListenerService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
+        // User requested: "dont remove overlay".
+        // WhatsApp notifications are frequently updated, replaced, or dismissed when
+        // a call transitions from ringing to active, or when screen state changes.
+        // We keep the overlay active and persistent on screen so monitoring is uninterrupted.
         if (sbn == null) return
-
         val packageName = sbn.packageName
         if (packageName !in WHATSAPP_PACKAGES) return
 
-        val notification = sbn.notification ?: return
-        val category = notification.category
-        val text = notification.extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-
-        val isCall = category == Notification.CATEGORY_CALL ||
-                     text.contains("call", ignoreCase = true) ||
-                     text.contains("कॉल", ignoreCase = true)
-
-        if (isCall || isWhatsAppCallActive) {
-            Log.i(TAG, "WhatsApp Call notification dismissed. Terminating shield.")
-            isWhatsAppCallActive = false
-            currentWhatsAppCaller = null
-
-            CallShieldManager.stopInCallShield()
-            FloatingShieldOverlay.dismiss(this)
-        }
+        Log.d(TAG, "WhatsApp notification dismissed/updated, keeping FloatingShieldOverlay persistent.")
     }
 }

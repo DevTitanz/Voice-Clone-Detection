@@ -33,15 +33,30 @@ export default function App() {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
-  // Auto-authenticate default demo user if no token present so user can test immediately
+  const isTokenExpired = (tok) => {
+    if (!tok) return true;
+    try {
+      const parts = tok.split(".");
+      if (parts.length !== 3) return true;
+      const payload = JSON.parse(atob(parts[1]));
+      if (!payload.exp) return false;
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  };
+
+  // Auto-authenticate default demo user if no token present or if token is expired
   useEffect(() => {
-    if (!token) {
+    if (!token || isTokenExpired(token)) {
       handleQuickDemoLogin();
     }
-  }, []);
+  }, [token]);
 
   const handleQuickDemoLogin = async () => {
     try {
+      // Clear stale token
+      localStorage.removeItem("voiceguard_token");
       // Register or login default demo admin
       const res = await fetch("http://localhost:8000/api/v1/auth/login", {
         method: "POST",
@@ -155,6 +170,7 @@ export default function App() {
             <FileAnalyzer
               token={token}
               onTriggerStepUp={(sessId) => setStepUpSessionId(sessId)}
+              onTokenExpired={handleQuickDemoLogin}
             />
           </div>
         )}
@@ -164,6 +180,7 @@ export default function App() {
             <FileAnalyzer
               token={token}
               onTriggerStepUp={(sessId) => setStepUpSessionId(sessId)}
+              onTokenExpired={handleQuickDemoLogin}
             />
           </div>
         )}

@@ -56,6 +56,39 @@ class DetectionResult(BaseModel):
     model_version: str
     analysis_timestamp: datetime
     features_summary: Optional[dict] = None
+    # FAD-CNN Deep Learning Extension (from pk9444/2xqcTCqAYvy0SJbK)
+    fad_cnn_prediction: Optional[str] = None  # "FAKE" or "REAL"
+    fad_cnn_prob: Optional[float] = None
+    mel_spectrogram: Optional[List[List[float]]] = None
+    waveform_preview: Optional[List[float]] = None
+    smart_explanation: Optional[str] = None
+    acoustic_traits: Optional[dict] = None
+
+
+class FADCNNDetectionResponse(BaseModel):
+    filename: str
+    label: str  # "FAKE" or "REAL"
+    prob: float
+    confidence: float
+    mel_data: List[List[float]]
+    waveform: List[float]
+    acoustic_features: dict
+    explanation: str
+    model_type: str = "FADCNN_v2_MelSpectrogram"
+
+
+class VoiceCloneRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=1000)
+    target_speaker: Optional[str] = "timit_speaker_1"
+    speaker_embedding: Optional[List[float]] = None
+
+
+class WEREvaluationResponse(BaseModel):
+    relative_wer: float
+    real_transcript: str
+    fake_transcript: str
+    asr_model: str
+
 
 
 class SessionHistoryItem(BaseModel):
