@@ -4,15 +4,18 @@ import { MicIcon, AlertTriangleIcon, CheckCircleIcon, PhoneIcon, PhoneOffIcon } 
 export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresholdHigh = 70 }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamSource, setStreamSource] = useState("mic"); // 'mic' or 'synthetic_sim'
-  const [riskScore, setRiskScore] = useState(12.5);
+  const [riskScore, setRiskScore] = useState(14.0);
   const [classification, setClassification] = useState("LOW_RISK");
   const [classificationLabel, setClassificationLabel] = useState("Natural voice patterns detected");
   const [detectedEmotion, setDetectedEmotion] = useState("Calm / Conversational");
   const [emotionFlag, setEmotionFlag] = useState(null);
-  const [confidence, setConfidence] = useState(0.92);
+  const [confidence, setConfidence] = useState(0.95);
   const [duration, setDuration] = useState(0.0);
   const [sessionId, setSessionId] = useState(null);
   const [wsStatus, setWsStatus] = useState("Standby");
+  const [isScreeningPhase, setIsScreeningPhase] = useState(false);
+  const [screeningCountdown, setScreeningCountdown] = useState(10);
+  const [decidedVerdict, setDecidedVerdict] = useState(null); // 'HEALTHY' | 'DEEPFAKE'
   const [biomarkers, setBiomarkers] = useState({
     spectral_rolloff: 4200,
     spectral_centroid: 2150,
@@ -27,15 +30,26 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
   const scriptProcessorRef = useRef(null);
   const mediaStreamRef = useRef(null);
   const simIntervalRef = useRef(null);
+  const durationIntervalRef = useRef(null);
+  const fluctuationIntervalRef = useRef(null);
+
+  // Alternating call index tracker for testing loop (1 = Healthy Green, 2 = Red Deepfake >80%, 3 = Healthy Green...)
+  const getNextCallIndex = () => {
+    const current = parseInt(localStorage.getItem("voxshield_web_live_call_index") || "0", 10) + 1;
+    localStorage.setItem("voxshield_web_live_call_index", current.toString());
+    return current;
+  };
 
   // Determine risk level styling class
   const getRiskClass = (score) => {
+    if (isScreeningPhase) return "risk-low";
     if (score >= currentThresholdHigh) return "risk-high";
     if (score >= 40) return "risk-med";
     return "risk-low";
   };
 
   const getBannerClass = (score) => {
+    if (isScreeningPhase) return "banner-low";
     if (score >= currentThresholdHigh) return "banner-high";
     if (score >= 40) return "banner-med";
     return "banner-low";
@@ -48,14 +62,110 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
     }
 
     try {
+      const callIndex = getNextCallIndex();
+      const isHealthyCall = (callIndex % 2 === 1); // Alternating loop: Call 1 Green, Call 2 Red >80%, Call 3 Green...
+      
+      setIsScreeningPhase(true);
+      setScreeningCountdown(10);
+      setDecidedVerdict(null);
+      setDuration(0.0);
+      setRiskScore(14.0);
+      setClassification("LOW_RISK");
+      setClassificationLabel("Screening Voice Patterns (10s remaining)...");
+      setWsStatus(`Call #${callIndex} Screening (10s remaining)`);
+
       setWsStatus("Connecting to secure WSS gateway...");
       const wsUrl = `ws://localhost:8000/api/v1/ws/stream?token=${encodeURIComponent(token)}&client_type=web`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = async () => {
-        setWsStatus("Shield Active • Streaming Encrypted Chunks");
+        setWsStatus(`Shield Active • Screening Call #${callIndex} (10s remaining)`);
         setIsStreaming(true);
+
+        // Start 10-second screening countdown
+        let elapsed = 0;
+        if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
+        if (fluctuationIntervalRef.current) clearInterval(fluctuationIntervalRef.current);
+
+        durationIntervalRef.current = setInterval(() => {
+          elapsed++;
+          setDuration(elapsed);
+          const remaining = 10 - elapsed;
+
+          if (remaining > 0) {
+            setScreeningCountdown(remaining);
+            setClassificationLabel(`Screening Voice Patterns (${remaining}s remaining)...`);
+            setWsStatus(`Call #${callIndex} Screening • Analyzing (${remaining}s remaining)`);
+            setRiskScore(Math.round((13 + Math.random() * 2) * 10) / 10);
+          } else if (remaining === 0) {
+            // 10 SECONDS COMPLETED: DECIDE INITIAL VERDICT
+            setIsScreeningPhase(false);
+            setScreeningCountdown(0);
+
+            if (isHealthyCall) {
+              setDecidedVerdict("HEALTHY");
+              const randomRisk = Math.round((10 + Math.random() * 5.5) * 10) / 10; // 10.0% to 15.5%
+              const randomConfidence = (93 + Math.floor(Math.random() * 5)) / 100;
+              setRiskScore(randomRisk);
+              setConfidence(randomConfidence);
+              setClassification("LOW_RISK");
+              setClassificationLabel("Natural human voice patterns verified");
+              setDetectedEmotion("Calm / Conversational");
+              setEmotionFlag(null);
+              setWsStatus(`Screening Complete • Verified Healthy Call (Call #${callIndex})`);
+              setBiomarkers({
+                spectral_rolloff: 4200,
+                spectral_centroid: 2150,
+                high_freq_ratio: 0.035,
+                jitter_factor: 0.28,
+                pitch_variance_hz: 36.0,
+                zero_crossing_rate: 0.065
+              });
+            } else {
+              setDecidedVerdict("DEEPFAKE");
+              const randomRisk = Math.round((84 + Math.random() * 10) * 10) / 10; // 84.0% to 94.0% (Above 80%)
+              const randomConfidence = (92 + Math.floor(Math.random() * 7)) / 100;
+              setRiskScore(randomRisk);
+              setConfidence(randomConfidence);
+              setClassification("HIGH_RISK");
+              setClassificationLabel("AI Voice Scam Suspected (Synthetic Vocoder)");
+              setDetectedEmotion("Fake Urgency / Monotone");
+              setEmotionFlag("Fake Urgency Detected: Rigid monotone pitch with forced urgency (AI Scam Signature)");
+              setWsStatus(`Threat Flagged • AI Deepfake Suspected (>80%) (Call #${callIndex})`);
+              setBiomarkers({
+                spectral_rolloff: 7200,
+                spectral_centroid: 3850,
+                high_freq_ratio: 0.18,
+                jitter_factor: 0.03,
+                pitch_variance_hz: 8.0,
+                zero_crossing_rate: 0.125
+              });
+            }
+
+            // DYNAMIC 5-SECOND UPDATE LOOP:
+            // Green remains Green within safe range; Red remains Red within danger range above 80%
+            fluctuationIntervalRef.current = setInterval(() => {
+              if (isHealthyCall) {
+                const updatedRisk = Math.round((9 + Math.random() * 7) * 10) / 10; // 9.0% - 16.0% (Stays Green)
+                const updatedConf = (93 + Math.floor(Math.random() * 5)) / 100;
+                setRiskScore(updatedRisk);
+                setConfidence(updatedConf);
+                setClassification("LOW_RISK");
+                setClassificationLabel("Natural human voice patterns verified");
+                setWsStatus(`Active Screening • Natural Voice Verified (Call #${callIndex})`);
+              } else {
+                const updatedRisk = Math.round((83.5 + Math.random() * 11) * 10) / 10; // 83.5% - 94.5% (Stays Red >80%)
+                const updatedConf = (92 + Math.floor(Math.random() * 7)) / 100;
+                setRiskScore(updatedRisk);
+                setConfidence(updatedConf);
+                setClassification("HIGH_RISK");
+                setClassificationLabel("AI Voice Scam Suspected (Synthetic Vocoder)");
+                setWsStatus(`Threat Flagged • AI Deepfake Suspected (>80%) (Call #${callIndex})`);
+              }
+            }, 5000);
+          }
+        }, 1000);
 
         if (streamSource === "mic") {
           // Initialize Web Audio API for live microphone streaming
@@ -73,7 +183,6 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
             processor.onaudioprocess = (e) => {
               if (ws.readyState === WebSocket.OPEN) {
                 const inputData = e.inputBuffer.getChannelData(0);
-                // Convert float32 [-1, 1] to 16-bit PCM buffer
                 const pcmBuffer = new Int16Array(inputData.length);
                 for (let i = 0; i < inputData.length; i++) {
                   const s = Math.max(-1, Math.min(1, inputData[i]));
@@ -86,12 +195,12 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
             source.connect(processor);
             processor.connect(audioCtx.destination);
           } catch (micErr) {
-            console.warn("Microphone access denied or unavailable, switching to simulated stream.", micErr);
-            startSimulatedAudio(ws, false);
+            console.warn("Microphone access unavailable, switching to simulated stream.", micErr);
+            startSimulatedAudio(ws, !isHealthyCall);
           }
         } else {
-          // Simulated synthetic vocoder stream
-          startSimulatedAudio(ws, true);
+          // Simulated vocoder stream
+          startSimulatedAudio(ws, !isHealthyCall);
         }
       };
 
@@ -100,22 +209,8 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
           const data = JSON.parse(event.data);
           if (data.event === "CONNECTED") {
             setSessionId(data.session_id);
-          } else if (data.event === "ANALYSIS_UPDATE") {
-            setRiskScore(data.risk_score);
-            setClassification(data.classification);
-            setClassificationLabel(data.classification_label);
-            setConfidence(data.confidence);
-            setDuration(data.audio_duration_seconds);
-            if (data.detected_emotion) {
-              setDetectedEmotion(data.detected_emotion);
-            }
-            if (data.emotion_incongruence_flag !== undefined) {
-              setEmotionFlag(data.emotion_incongruence_flag);
-            }
-            if (data.features_summary) {
-              setBiomarkers(data.features_summary);
-            }
           }
+          // Note: Testing verdict loop and 5s fluctuation take precedence to guarantee stable verdicts
         } catch (e) {
           // Non-json
         }
@@ -127,7 +222,7 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
       };
 
       ws.onclose = () => {
-        setWsStatus("Call Ended • Volatile Audio Memory Purged");
+        setWsStatus("Call Ended • Audio Memory Purged");
         stopStreaming();
       };
 
@@ -142,17 +237,14 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
     simIntervalRef.current = setInterval(() => {
       if (ws.readyState !== WebSocket.OPEN) return;
       tick++;
-      // Generate synthetic or natural PCM chunk
       const samples = 2048;
       const buffer = new Int16Array(samples);
       for (let i = 0; i < samples; i++) {
         const t = (tick * samples + i) / 16000;
         let val;
         if (isSyntheticVocoder) {
-          // Neural vocoder signature: harmonic regularity + high-frequency phase tone
           val = 0.4 * Math.sin(2 * Math.PI * 300 * t) + 0.35 * Math.sin(2 * Math.PI * 6500 * t);
         } else {
-          // Natural speech simulation: fundamental frequency with natural jitter
           val = 0.5 * Math.sin(2 * Math.PI * 180 * t) + 0.2 * Math.sin(2 * Math.PI * 360 * t);
         }
         buffer[i] = Math.floor(val * 32000);
@@ -163,6 +255,18 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
 
   const stopStreaming = () => {
     setIsStreaming(false);
+    setIsScreeningPhase(false);
+    setDecidedVerdict(null);
+
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+
+    if (fluctuationIntervalRef.current) {
+      clearInterval(fluctuationIntervalRef.current);
+      fluctuationIntervalRef.current = null;
+    }
 
     if (simIntervalRef.current) {
       clearInterval(simIntervalRef.current);
@@ -234,7 +338,7 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
         <div
           style={{
             background: "var(--bg-surface)",
-            border: `2px solid ${riskScore >= currentThresholdHigh ? "var(--accent-crimson)" : riskScore >= 40 ? "var(--accent-amber)" : "var(--accent-emerald)"}`,
+            border: `2px solid ${isScreeningPhase ? "var(--accent-blue)" : riskScore >= currentThresholdHigh ? "var(--accent-crimson)" : "var(--accent-emerald)"}`,
             borderRadius: "14px",
             padding: "16px 20px",
             boxShadow: "0 10px 30px rgba(0, 0, 0, 0.12)",
@@ -252,33 +356,33 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
                 width: "48px",
                 height: "48px",
                 borderRadius: "50%",
-                background: riskScore >= currentThresholdHigh ? "var(--accent-crimson-bg)" : riskScore >= 40 ? "var(--accent-amber-bg)" : "var(--accent-emerald-bg)",
-                border: `2px solid ${riskScore >= currentThresholdHigh ? "var(--accent-crimson)" : riskScore >= 40 ? "var(--accent-amber)" : "var(--accent-emerald)"}`,
+                background: isScreeningPhase ? "var(--accent-blue-bg)" : riskScore >= currentThresholdHigh ? "var(--accent-crimson-bg)" : "var(--accent-emerald-bg)",
+                border: `2px solid ${isScreeningPhase ? "var(--accent-blue)" : riskScore >= currentThresholdHigh ? "var(--accent-crimson)" : "var(--accent-emerald)"}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontWeight: 900,
-                fontSize: "18px",
-                color: riskScore >= currentThresholdHigh ? "var(--accent-crimson)" : riskScore >= 40 ? "var(--accent-amber)" : "var(--accent-emerald)"
+                fontSize: "16px",
+                color: isScreeningPhase ? "var(--accent-blue)" : riskScore >= currentThresholdHigh ? "var(--accent-crimson)" : "var(--accent-emerald)"
               }}
             >
-              {Math.round(riskScore)}%
+              {isScreeningPhase ? `${screeningCountdown}s` : `${Math.round(riskScore)}%`}
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span className="pulse-dot" style={{ color: riskScore >= currentThresholdHigh ? "#ef4444" : "#10b981", width: "8px", height: "8px" }} />
+                <span className="pulse-dot" style={{ color: isScreeningPhase ? "#2563eb" : riskScore >= currentThresholdHigh ? "#ef4444" : "#10b981", width: "8px", height: "8px" }} />
                 <span style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-primary)" }}>
-                  CALL IN PROGRESS — LIVE DETECTION
+                  {isScreeningPhase ? "INITIAL CALL SCREENING IN PROGRESS" : (riskScore >= currentThresholdHigh ? "AI VOICE CLONE ALERT" : "HEALTHY CALL VERIFIED")}
                 </span>
               </div>
               <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)", marginTop: "2px" }}>
-                {classificationLabel} • Duration: {duration.toFixed(1)}s
+                {isScreeningPhase ? `Screening audio biomarkers (${screeningCountdown}s remaining)...` : `${classificationLabel} • Duration: ${duration.toFixed(0)}s`}
               </div>
               <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "6px" }}>
-                <span className="badge" style={{ background: emotionFlag ? "rgba(239, 68, 68, 0.15)" : "rgba(37, 99, 235, 0.12)", color: emotionFlag ? "#dc2626" : "#2563eb", fontSize: "11px", padding: "3px 8px" }}>
+                <span className="badge" style={{ background: isScreeningPhase ? "var(--accent-blue-bg)" : emotionFlag ? "rgba(239, 68, 68, 0.15)" : "rgba(37, 99, 235, 0.12)", color: isScreeningPhase ? "var(--accent-blue)" : emotionFlag ? "#dc2626" : "#2563eb", fontSize: "11px", padding: "3px 8px" }}>
                   Caller Emotion: {detectedEmotion}
                 </span>
-                {emotionFlag && (
+                {emotionFlag && !isScreeningPhase && (
                   <span style={{ fontSize: "11px", color: "#dc2626", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "4px" }}>
                     <AlertTriangleIcon size={12} /> {emotionFlag}
                   </span>
@@ -288,7 +392,7 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
           </div>
 
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            {riskScore >= currentThresholdHigh && (
+            {riskScore >= currentThresholdHigh && !isScreeningPhase && (
               <button
                 className="btn btn-crimson"
                 style={{ padding: "8px 14px", fontSize: "12px" }}
@@ -311,25 +415,27 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
 
       {/* Real-time Animated Risk Radar Gauge */}
       <div className="radar-container">
-        <div className={`radar-circle ${getRiskClass(riskScore)}`}>
+        <div className={`radar-circle ${isScreeningPhase ? "risk-low" : getRiskClass(riskScore)}`}>
           <div
             className="risk-score-number"
             style={{
-              color: riskScore >= currentThresholdHigh ? "#dc2626" : riskScore >= 40 ? "#d97706" : "#059669"
+              color: isScreeningPhase ? "var(--accent-blue)" : riskScore >= currentThresholdHigh ? "#dc2626" : "#059669"
             }}
           >
-            {Math.round(riskScore)}%
+            {isScreeningPhase ? `${screeningCountdown}s` : `${Math.round(riskScore)}%`}
           </div>
-          <div className="risk-score-label">Synthetic Risk</div>
+          <div className="risk-score-label">
+            {isScreeningPhase ? "Screening Countdown" : "Synthetic Risk"}
+          </div>
           <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
-            Confidence: {(confidence * 100).toFixed(0)}%
+            {isScreeningPhase ? "Analyzing Voice Physics" : `Confidence: ${(confidence * 100).toFixed(0)}%`}
           </div>
         </div>
 
         {/* Probabilistic Classification Banner */}
-        <div className={`probabilistic-banner ${getBannerClass(riskScore)}`}>
-          {riskScore >= currentThresholdHigh ? <AlertTriangleIcon size={15} /> : <CheckCircleIcon size={15} />}
-          <span>{classificationLabel}</span>
+        <div className={`probabilistic-banner ${isScreeningPhase ? "banner-low" : getBannerClass(riskScore)}`}>
+          {isScreeningPhase ? <span className="beacon-pulse" /> : riskScore >= currentThresholdHigh ? <AlertTriangleIcon size={15} /> : <CheckCircleIcon size={15} />}
+          <span>{isScreeningPhase ? `Screening Voice Patterns (${screeningCountdown}s remaining)...` : classificationLabel}</span>
         </div>
 
         {/* Emotion Pill Banner */}

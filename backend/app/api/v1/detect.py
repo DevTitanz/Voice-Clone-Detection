@@ -58,8 +58,8 @@ async def upload_audio_for_analysis(
         # Explicitly release raw upload buffer
         del file_bytes
 
-    # Run AI inference on volatile memory buffer
-    analysis = detector_service.analyze_audio_buffer(samples, sample_rate)
+    # Run AI inference on volatile memory buffer (with is_file_upload=True to calibrate threshold)
+    analysis = detector_service.analyze_audio_buffer(samples, sample_rate, is_file_upload=True)
 
     # Generate anonymous session UUID
     anonymous_session_id = f"sess_{uuid.uuid4().hex}"

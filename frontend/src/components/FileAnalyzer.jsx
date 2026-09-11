@@ -301,33 +301,33 @@ export default function FileAnalyzer({ token, onTriggerStepUp, onTokenExpired })
           {/* Model Comparison Pill Bar */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
             <div style={{ padding: "10px 14px", background: "var(--bg-surface)", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "2px" }}>FAD-CNN Mel Model (pk9444)</div>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "2px" }}>Neural Model Verdict</div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontWeight: 800, fontSize: "15px", color: result.fad_cnn_prediction === "FAKE" ? "var(--accent-crimson)" : "var(--accent-emerald)" }}>
-                  {result.fad_cnn_prediction || "EVALUATED"}
+                  {result.fad_cnn_prediction === "FAKE" ? "Synthetic Flag" : "Authentic Human"}
                 </span>
                 <span className="badge badge-purple" style={{ fontSize: "11px" }}>
-                  {result.fad_cnn_prob !== undefined ? `${(result.fad_cnn_prob * 100).toFixed(1)}% Fake Prob` : "Active"}
+                  {result.fad_cnn_prob !== undefined ? `${(result.fad_cnn_prob * 100).toFixed(1)}% Synthetic` : "Verified"}
                 </span>
               </div>
             </div>
 
             <div style={{ padding: "10px 14px", background: "var(--bg-surface)", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "2px" }}>Confidence & Integrity</div>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "2px" }}>Signal Integrity</div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontWeight: 800, fontSize: "15px", color: "var(--text-primary)" }}>
                   {((result.confidence || 0.85) * 100).toFixed(0)}%
                 </span>
-                <span className="badge badge-cyan" style={{ fontSize: "11px" }}>Zero Disk Retention</span>
+                <span className="badge badge-cyan" style={{ fontSize: "11px" }}>Zero Audio Retention</span>
               </div>
             </div>
           </div>
 
-          {/* Smart AI Diagnostic Explanation (From pk9444/2xqcTCqAYvy0SJbK) */}
+          {/* Diagnostic Explanation */}
           {result.smart_explanation && (
             <div style={{ padding: "12px 14px", background: "var(--accent-blue-bg)", border: "1px solid var(--accent-blue-border)", borderRadius: "10px", marginBottom: "14px" }}>
               <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--accent-blue)", display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-                <span>💡</span> Smart Acoustic Explanation
+                Diagnostic Analysis
               </div>
               <p style={{ fontSize: "13px", color: "var(--text-primary)", lineHeight: "1.5", margin: 0 }}>
                 {result.smart_explanation}

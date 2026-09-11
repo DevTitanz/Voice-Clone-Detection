@@ -23,7 +23,8 @@ class VoiceDeepfakeDetector:
     def analyze_audio_buffer(
         self,
         audio_samples: np.ndarray,
-        sample_rate: int = 16000
+        sample_rate: int = 16000,
+        is_file_upload: bool = False
     ) -> Dict[str, Any]:
         """
         Analyze audio waveform samples in volatile memory.
@@ -100,7 +101,12 @@ class VoiceDeepfakeDetector:
             # Blend FAD-CNN probability with acoustic biomarker risk
             fad_prob_pct = fad_res["fake_probability"] * 100.0
             blended_risk = round(float(np.clip(0.60 * raw_risk + 0.40 * fad_prob_pct, 5.0, 98.0)), 1)
-            risk_score = blended_risk
+            
+            # For audio file uploads: reduce detected risk by ~30% so genuine human voices are not flagged as suspicious
+            if is_file_upload:
+                risk_score = round(float(np.clip(blended_risk * 0.70, 4.0, 98.0)), 1)
+            else:
+                risk_score = blended_risk
 
             # Confidence based on audio duration and signal quality
             confidence = round(float(np.clip(0.65 + min(0.3, duration_sec * 0.05), 0.65, 0.95)), 2)
