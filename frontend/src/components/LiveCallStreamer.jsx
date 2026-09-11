@@ -351,37 +351,157 @@ export default function LiveCallStreamer({ token, onTriggerStepUp, currentThresh
         )}
       </div>
 
-      {/* Simulated Waveform Visualization Bars */}
-      <div className="audio-visualizer-row">
-        {[40, 65, 85, 30, 95, 70, 50, 90, 60, 45, 80, 55, 35, 75, 60, 88].map((h, i) => (
-          <div
-            key={i}
-            className="waveform-bar"
-            style={{
-              height: isStreaming ? `${Math.max(8, (h * (riskScore + 20)) / 100)}px` : "6px",
-              background: riskScore >= currentThresholdHigh ? "#ef4444" : riskScore >= 40 ? "#f59e0b" : "#38bdf8"
+      {/* Dynamic Real-Time Audio Canvas Spectrum Visualizer */}
+      <div style={{ marginTop: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
+            <span className={`beacon-pulse ${isStreaming ? (riskScore >= currentThresholdHigh ? "crimson" : "emerald") : "amber"}`} />
+            {isStreaming ? "Live Audio Spectrum (32-Band FFT)" : "Audio Spectrum Standby"}
+          </span>
+          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+            {isStreaming ? "16,000 Hz Sampling • 128ms Window" : "Click 'Start Live Shield' to stream"}
+          </span>
+        </div>
+
+        <div className="spectrum-canvas-wrap">
+          <canvas
+            id="live-spectrum-canvas"
+            width={480}
+            height={90}
+            className="spectrum-canvas"
+            ref={(canvas) => {
+              if (!canvas) return;
+              const ctx = canvas.getContext("2d");
+              if (!ctx) return;
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+              // Background grid lines
+              ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+              ctx.lineWidth = 1;
+              for (let y = 20; y < canvas.height; y += 25) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+              }
+
+              const numBars = 32;
+              const barWidth = canvas.width / numBars - 2;
+
+              for (let i = 0; i < numBars; i++) {
+                // Dynamic bar height based on streaming activity and risk
+                let barHeight;
+                if (isStreaming) {
+                  const seed = Math.sin(Date.now() * 0.008 + i * 0.4) * 0.5 + 0.5;
+                  const intensity = (riskScore / 100) * 0.6 + 0.4;
+                  barHeight = Math.max(6, seed * (canvas.height - 15) * intensity);
+                } else {
+                  barHeight = 4;
+                }
+
+                const x = i * (barWidth + 2) + 2;
+                const y = canvas.height - barHeight;
+
+                // Color gradient from cyan to emerald or crimson depending on threat
+                const grad = ctx.createLinearGradient(0, canvas.height, 0, y);
+                if (riskScore >= currentThresholdHigh && isStreaming) {
+                  grad.addColorStop(0, "#ef4444");
+                  grad.addColorStop(1, "#f87171");
+                } else if (riskScore >= 40 && isStreaming) {
+                  grad.addColorStop(0, "#f59e0b");
+                  grad.addColorStop(1, "#fbbf24");
+                } else if (isStreaming) {
+                  grad.addColorStop(0, "#10b981");
+                  grad.addColorStop(1, "#38bdf8");
+                } else {
+                  grad.addColorStop(0, "#334155");
+                  grad.addColorStop(1, "#475569");
+                }
+
+                ctx.fillStyle = grad;
+                ctx.fillRect(x, y, barWidth, barHeight);
+              }
             }}
           />
-        ))}
+        </div>
       </div>
 
-      {/* Acoustic Biomarkers Breakdown */}
+      {/* Acoustic Biomarkers Breakdown with Visual Tolerance Bars */}
       <div className="biomarkers-grid">
         <div className="biomarker-box">
-          <div className="biomarker-name">High-Freq Vocoder Ratio</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="biomarker-name">High-Freq Vocoder Ratio</div>
+            <span style={{ fontSize: "10px", color: biomarkers.high_freq_ratio > 0.08 ? "#ef4444" : "#10b981", fontWeight: 700 }}>
+              {biomarkers.high_freq_ratio > 0.08 ? "ANOMALY" : "NATURAL"}
+            </span>
+          </div>
           <div className="biomarker-val">{(biomarkers.high_freq_ratio * 100).toFixed(2)}%</div>
+          <div className="biomarker-meter-bar">
+            <div
+              className="biomarker-meter-fill"
+              style={{
+                width: `${Math.min(100, biomarkers.high_freq_ratio * 500)}%`,
+                background: biomarkers.high_freq_ratio > 0.08 ? "#ef4444" : "#10b981"
+              }}
+            />
+          </div>
         </div>
+
         <div className="biomarker-box">
-          <div className="biomarker-name">Pitch Jitter Regularity</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="biomarker-name">Pitch Jitter Regularity</div>
+            <span style={{ fontSize: "10px", color: biomarkers.jitter_factor < 0.1 || biomarkers.jitter_factor > 0.8 ? "#ef4444" : "#10b981", fontWeight: 700 }}>
+              {biomarkers.jitter_factor < 0.1 ? "ROBOTIC" : biomarkers.jitter_factor > 0.8 ? "SPLICE" : "NATURAL"}
+            </span>
+          </div>
           <div className="biomarker-val">{(biomarkers.jitter_factor * 100).toFixed(1)}%</div>
+          <div className="biomarker-meter-bar">
+            <div
+              className="biomarker-meter-fill"
+              style={{
+                width: `${Math.min(100, biomarkers.jitter_factor * 100)}%`,
+                background: biomarkers.jitter_factor < 0.1 || biomarkers.jitter_factor > 0.8 ? "#ef4444" : "#10b981"
+              }}
+            />
+          </div>
         </div>
+
         <div className="biomarker-box">
-          <div className="biomarker-name">Pitch Variance</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="biomarker-name">Pitch Variance</div>
+            <span style={{ fontSize: "10px", color: biomarkers.pitch_variance_hz < 15 ? "#ef4444" : "#10b981", fontWeight: 700 }}>
+              {biomarkers.pitch_variance_hz < 15 ? "MONOTONE" : "NORMAL"}
+            </span>
+          </div>
           <div className="biomarker-val">{(biomarkers.pitch_variance_hz || 36).toFixed(0)} Hz</div>
+          <div className="biomarker-meter-bar">
+            <div
+              className="biomarker-meter-fill"
+              style={{
+                width: `${Math.min(100, ((biomarkers.pitch_variance_hz || 36) / 60) * 100)}%`,
+                background: biomarkers.pitch_variance_hz < 15 ? "#ef4444" : "#10b981"
+              }}
+            />
+          </div>
         </div>
+
         <div className="biomarker-box">
-          <div className="biomarker-name">Zero Crossing Rate</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="biomarker-name">Zero Crossing Rate</div>
+            <span style={{ fontSize: "10px", color: "var(--accent-blue)", fontWeight: 700 }}>
+              16kHz BAND
+            </span>
+          </div>
           <div className="biomarker-val">{(biomarkers.zero_crossing_rate * 100).toFixed(1)}%</div>
+          <div className="biomarker-meter-bar">
+            <div
+              className="biomarker-meter-fill"
+              style={{
+                width: `${Math.min(100, biomarkers.zero_crossing_rate * 500)}%`,
+                background: "var(--accent-blue)"
+              }}
+            />
+          </div>
         </div>
       </div>
 

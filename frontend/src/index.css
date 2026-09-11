@@ -569,3 +569,342 @@ body {
   overflow-y: auto;
   background: var(--bg-primary);
 }
+
+/* ==========================================================================
+   VOXSHIELD ADVANCED CYBER COMMAND CENTER STYLES & TELEMETRY
+   ========================================================================== */
+
+/* Ambient background glow */
+.ambient-glow {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1000px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, rgba(5, 150, 105, 0.04) 45%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme="dark"] .ambient-glow {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(16, 185, 129, 0.06) 45%, transparent 70%);
+}
+
+/* Pulsing Status Beacon */
+.beacon-pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulse-beacon 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+.beacon-pulse.crimson {
+  background: var(--accent-crimson);
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+}
+
+.beacon-pulse.amber {
+  background: var(--accent-amber);
+  box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+}
+
+@keyframes pulse-beacon {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* Telemetry Ribbon Strip */
+.telemetry-banner {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.telemetry-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.telemetry-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-bg);
+  border: 1px solid var(--accent-emerald-border);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 860px) {
+  .telemetry-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .telemetry-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.telemetry-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: var(--transition);
+}
+
+.telemetry-card:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-1px);
+}
+
+.telemetry-card-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.telemetry-card-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.telemetry-card-sub {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* APK Direct Download Button */
+.btn-apk-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-apk-download:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+/* Real-Time Audio Canvas Visualizer */
+.spectrum-canvas-wrap {
+  width: 100%;
+  height: 90px;
+  background: #090e1a;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin: 14px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.spectrum-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Architecture Explorer Styles */
+.arch-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.arch-header {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.arch-dual-surface {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .arch-dual-surface {
+    grid-template-columns: 1fr;
+  }
+}
+
+.arch-column {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.arch-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.arch-node {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: var(--transition);
+}
+
+.arch-node:hover {
+  border-color: var(--accent-blue);
+  transform: translateX(4px);
+}
+
+.arch-node-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.arch-node-body h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.arch-node-body p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+/* Threat Scenarios Grid */
+.threat-scenarios-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .threat-scenarios-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.threat-scenario-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: var(--transition);
+}
+
+.threat-scenario-card:hover {
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-card);
+}
+
+.scenario-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Biomarker visual tolerance bar */
+.biomarker-meter-bar {
+  width: 100%;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .biomarker-meter-bar {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.biomarker-meter-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+

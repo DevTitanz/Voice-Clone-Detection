@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
+import TelemetryBanner from "./components/TelemetryBanner";
+import ArchitectureExplorer from "./components/ArchitectureExplorer";
 import LiveCallStreamer from "./components/LiveCallStreamer";
 import FileAnalyzer from "./components/FileAnalyzer";
 import CallHistory from "./components/CallHistory";
@@ -8,7 +10,7 @@ import AdminPanel from "./components/AdminPanel";
 import MobileSimulator from "./components/MobileSimulator";
 import PrivacyModal from "./components/PrivacyModal";
 import AuthModal from "./components/AuthModal";
-import { MicIcon, UploadIcon, HistoryIcon, SmartphoneIcon, SettingsIcon } from "./components/Icons";
+import { MicIcon, UploadIcon, HistoryIcon, SmartphoneIcon, SettingsIcon, ShieldIcon } from "./components/Icons";
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem("voxshield_token") || "");
@@ -124,6 +126,9 @@ export default function App() {
         toggleTheme={toggleTheme}
       />
 
+      {/* Live Threat Telemetry Strip */}
+      <TelemetryBanner onSelectTab={(tab) => setActiveTab(tab)} />
+
       {/* Main Navigation Tabs */}
       <nav className="tabs-bar">
         <button
@@ -139,16 +144,22 @@ export default function App() {
           <UploadIcon size={15} /> Audio File Inspector
         </button>
         <button
-          className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
-          onClick={() => setActiveTab("history")}
-        >
-          <HistoryIcon size={15} /> Audit History
-        </button>
-        <button
           className={`tab-btn ${activeTab === "mobile" ? "active" : ""}`}
           onClick={() => setActiveTab("mobile")}
         >
           <SmartphoneIcon size={15} /> Mobile Simulator
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "architecture" ? "active" : ""}`}
+          onClick={() => setActiveTab("architecture")}
+        >
+          <ShieldIcon size={15} /> Threat & Architecture
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
+          onClick={() => setActiveTab("history")}
+        >
+          <HistoryIcon size={15} /> Audit History
         </button>
         <button
           className={`tab-btn ${activeTab === "admin" ? "active" : ""}`}
@@ -176,7 +187,7 @@ export default function App() {
         )}
 
         {activeTab === "upload" && (
-          <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+          <div style={{ maxWidth: "840px", margin: "0 auto" }}>
             <FileAnalyzer
               token={token}
               onTriggerStepUp={(sessId) => setStepUpSessionId(sessId)}
@@ -185,15 +196,19 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === "history" && (
-          <CallHistory token={token} />
-        )}
-
         {activeTab === "mobile" && (
           <MobileSimulator
             token={token}
             onTriggerStepUp={(sessId) => setStepUpSessionId(sessId)}
           />
+        )}
+
+        {activeTab === "architecture" && (
+          <ArchitectureExplorer onLaunchSimulator={() => setActiveTab("mobile")} />
+        )}
+
+        {activeTab === "history" && (
+          <CallHistory token={token} />
         )}
 
         {activeTab === "admin" && (
