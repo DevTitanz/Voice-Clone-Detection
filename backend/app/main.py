@@ -53,7 +53,7 @@ app.add_middleware(StructuredLoggingMiddleware)
 # 4. Add Strict CORS Middleware (Strict allowlist - NO wildcards in authenticated production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "Accept"],

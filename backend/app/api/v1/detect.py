@@ -1,6 +1,8 @@
 import os
 import uuid
 from typing import List, Optional
+
+import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
@@ -20,10 +22,32 @@ from app.db.schemas import (
 from app.api.deps import get_current_user
 from app.services.audio_validator import validate_audio_content
 from app.services.detector import detector_service
-from app.services.wav2vec_detector import compare, eval_service, detect_deepfake
+from app.services.wav2vec_detector import compare, eval_service, detect_deepfake, get_deepfake_pipeline
 from app.services.fad_cnn_service import fad_cnn_service, voice_cloner, wer_evaluator
 
 router = APIRouter(prefix="/detect", tags=["Voice Deepfake Detection"])
+
+MAX_ANALYSIS_SECONDS = 30
+
+
+def _decode_audio(file_bytes: bytes):
+    """Decode WAV / MP3 / OGG / FLAC bytes into mono float32 samples + sample rate."""
+    try:
+        return detector_service.parse_wav_bytes(file_bytes)
+    except Exception:
+        pass
+    try:
+        import io
+        import soundfile as sf
+        data, sr = sf.read(io.BytesIO(file_bytes), dtype="float32")
+        if data.ndim > 1:
+            data = data.mean(axis=1)
+        return data, sr
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Could not decode this audio file. Try WAV, OGG, FLAC or MP3."
+        )
 
 
 @router.post("/upload", response_model=DetectionResult)
@@ -39,27 +63,72 @@ async def upload_audio_for_analysis(
     1. Enforces strict file size & magic-bytes MIME validation.
     2. Zero Audio Persistence: audio resides in memory only during analysis and is instantly purged.
     3. Calculates probabilistic synthetic-voice risk score and logs auditable session metadata.
-    4. Evaluates Deep Learning FAD-CNN Mel-Spectrogram biomarker model.
+    4. Trained wav2vec2 model decides the verdict; acoustic features are supporting detail.
     """
-    # Read file content safely in chunks
+    # Read file content
     file_bytes = await file.read()
 
     # Strict security & format validation
     validate_audio_content(file_bytes, file.filename or "unknown.wav")
 
-    # In-memory decoding & acoustic feature inference
+    # In-memory decoding
     try:
-        samples, sample_rate = detector_service.parse_wav_bytes(file_bytes)
-    except Exception:
-        # Fallback to PCM interpretation if container parsing is incomplete
-        samples = detector_service.parse_pcm16_chunk(file_bytes)
-        sample_rate = 16000
+        samples, sample_rate = _decode_audio(file_bytes)
     finally:
         # Explicitly release raw upload buffer
         del file_bytes
 
-    # Run AI inference on volatile memory buffer (with is_file_upload=True to calibrate threshold)
+    # Only analyze the first MAX_ANALYSIS_SECONDS of audio
+    samples = np.asarray(samples, dtype=np.float32)
+    samples = samples[: int(sample_rate * MAX_ANALYSIS_SECONDS)]
+
+    # Acoustic feature analysis (supporting detail: spectrogram, waveform, features)
     analysis = detector_service.analyze_audio_buffer(samples, sample_rate, is_file_upload=True)
+
+    # Trained wav2vec2 model decides the verdict
+    try:
+        _pipe = get_deepfake_pipeline()
+        if _pipe is not None:
+            _out = _pipe({"raw": samples, "sampling_rate": sample_rate})
+            _fake = 0.0
+            for _o in _out:
+                _lab = _o["label"].lower()
+                if _lab == "fake":
+                    _fake = float(_o["score"])
+                    break
+                if _lab == "real":
+                    _fake = 1.0 - float(_o["score"])
+            _score = round(_fake * 100, 1)
+            print("wav2vec2 fake probability:", _score)
+
+            analysis["risk_score"] = _score
+            analysis["fad_cnn_prob"] = _fake
+            analysis["fad_cnn_prediction"] = "FAKE" if _fake >= 0.5 else "REAL"
+
+            if _score >= settings.RISK_THRESHOLD_HIGH:
+                analysis["classification"] = "HIGH_RISK"
+                analysis["classification_label"] = "AI-generated voice suspected"
+                analysis["verification_required"] = True
+                _verdict = "likely synthetic (AI-generated or cloned)"
+            elif _score >= settings.RISK_THRESHOLD_LOW:
+                analysis["classification"] = "MEDIUM_RISK"
+                analysis["classification_label"] = "Suspicious acoustic characteristics"
+                analysis["verification_required"] = False
+                _verdict = "uncertain, with some synthetic characteristics"
+            else:
+                analysis["classification"] = "LOW_RISK"
+                analysis["classification_label"] = "Natural voice patterns detected"
+                analysis["verification_required"] = False
+                _verdict = "likely natural human speech"
+
+            analysis["smart_explanation"] = (
+                f"The trained wav2vec2 deepfake detector estimates a {_score}% probability "
+                f"that this voice is synthetic, so it is {_verdict}. "
+                f"Accuracy depends on recording quality and the type of fake; "
+                f"treat this as one signal, not proof."
+            )
+    except Exception as _e:
+        print("wav2vec2 failed, using old formula:", _e)
 
     # Generate anonymous session UUID
     anonymous_session_id = f"sess_{uuid.uuid4().hex}"
@@ -288,10 +357,7 @@ async def detect_with_fad_cnn(file: UploadFile = File(...)):
     validate_audio_content(file_bytes, file.filename or "audio.wav")
 
     try:
-        samples, sample_rate = detector_service.parse_wav_bytes(file_bytes)
-    except Exception:
-        samples = detector_service.parse_pcm16_chunk(file_bytes)
-        sample_rate = 16000
+        samples, sample_rate = _decode_audio(file_bytes)
     finally:
         del file_bytes
 
@@ -331,4 +397,3 @@ async def evaluate_wer_metrics(real_text: str, fake_text: str):
     """
     result = wer_evaluator.evaluate_relative_wer(real_text, fake_text)
     return WEREvaluationResponse(**result)
-

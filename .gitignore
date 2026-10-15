@@ -83,3 +83,12 @@ android/app/build/
 android/.gradle/
 *.apk
 *.aab
+
+# Recursive dependency exclusions
+**/node_modules/
+**/venv/
+**/.venv/
+**/env/
+**/__pycache__/
+**/.pytest_cache/
+**/.vite/

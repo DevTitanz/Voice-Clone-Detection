@@ -55,38 +55,15 @@ export default function App() {
 
   const handleQuickDemoLogin = async () => {
     try {
-      // Clear stale token
       localStorage.removeItem("voxshield_token");
-      // Register or login default demo admin
-      const res = await fetch("http://localhost:8000/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: "admin_demo", password: "SecurePassword123!" })
+      const res = await fetch("http://localhost:8000/api/v1/auth/demo-login", {
+        method: "POST"
       });
-
       if (res.ok) {
         const data = await res.json();
         handleAuthSuccess(data.access_token, data.user);
       } else {
-        // First-time setup: register demo admin
-        const regRes = await fetch("http://localhost:8000/api/v1/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: "admin_demo",
-            email: "admin@voxshield.ai",
-            password: "SecurePassword123!"
-          })
-        });
-        if (regRes.ok) {
-          const loginRes = await fetch("http://localhost:8000/api/v1/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: "admin_demo", password: "SecurePassword123!" })
-          });
-          const loginData = await loginRes.json();
-          handleAuthSuccess(loginData.access_token, loginData.user);
-        }
+        console.error("demo-login failed:", res.status, await res.text());
       }
     } catch (e) {
       console.warn("Backend offline or booting:", e);

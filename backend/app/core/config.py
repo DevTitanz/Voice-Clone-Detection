@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     PROJECT_NAME: str = "VoxShield AI - Real-Time Voice Cloning Detection"
-    DEBUG: bool = False
+    DEBUG: bool = True
 
     # Security & Auth
     # A safe default for development; in production, validated to require at least 32 characters

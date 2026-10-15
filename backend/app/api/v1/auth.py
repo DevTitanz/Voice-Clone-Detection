@@ -1,4 +1,5 @@
 from datetime import timedelta
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -44,7 +45,7 @@ async def register(
     # First user can be registered as ADMIN if none exist, otherwise USER
     user_count_result = await db.execute(select(User))
     first_user = user_count_result.scalars().first() is None
-    role = UserRole.ADMIN.value if first_user else UserRole.USER.value
+    role = UserRole.ADMIN.value  # DEMO MODE: every new account is admin
 
     new_user = User(
         username=user_in.username,
@@ -93,7 +94,8 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated."
         )
-
+        # DEMO MODE: always admin
+    user.role = UserRole.ADMIN.value
     # Issue short-lived JWT token
     access_token = create_access_token(
         subject=user.id,
@@ -118,7 +120,42 @@ async def login(
         user=UserPublicResponse.model_validate(user)
     )
 
+@router.post("/demo-login", response_model=TokenResponse)
+async def demo_login(request: Request, db: AsyncSession = Depends(get_db)):
+    """DEMO MODE: password ke bina hamesha admin token do."""
+    if not getattr(settings, "DEMO_MODE", True):
+        raise HTTPException(status_code=404, detail="Not found")
 
+    result = await db.execute(select(User).where(User.username == "demo_admin"))
+    user = result.scalars().first()
+
+    if not user:
+        user = User(
+            username="demo_admin",
+            email="demo_admin@voxshield.app",
+            hashed_password=get_password_hash(secrets.token_urlsafe(16)),
+            role=UserRole.ADMIN.value,
+            is_active=True,
+        )
+        db.add(user)
+    else:
+        user.role = UserRole.ADMIN.value
+        user.is_active = True
+
+    await db.commit()
+    await db.refresh(user)
+
+    access_token = create_access_token(
+        subject=user.id,
+        role=user.role,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+        user=UserPublicResponse.model_validate(user),
+    )
 @router.post("/logout")
 async def logout(
     token: str = Depends(oauth2_scheme),
